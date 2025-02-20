@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -13,117 +14,47 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.fuentes.battleships.ui.theme.BattleshipsTheme
-import com.fuentes.battleships.models.data.Cell
+import com.fuentes.battleships.models.game.data.Cell
+import com.fuentes.battleships.models.auth.ui.AuthState
+import com.fuentes.battleships.models.auth.ui.AuthViewModel
+import com.fuentes.battleships.models.auth.ui.LoginScreen
+import com.fuentes.battleships.models.game.ui.GameScreen
+import com.fuentes.battleships.models.auth.ui.RegistrationScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            val authViewModel: AuthViewModel by viewModels()
+
             BattleshipsTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    BattleshipGame()
-                }
-            }
-        }
-    }
-}
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    val authState = authViewModel.uiState.collectAsState()
+                    val authEmail = authState.value.email
 
-@Composable
-fun BattleshipGame() {
-    var gameBoard by remember { mutableStateOf(createInitialBoard()) }
+                    val navController = rememberNavController()
 
-    Surface(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Column {
-            Text(
-                text = "Battleship",
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            BattleshipGrid(
-                board = gameBoard,
-                onCellClick = { x, y ->
-                    gameBoard = gameBoard.map { cell ->
-                        if (cell.x == x && cell.y == y) {
-                            if (cell.isShip) {
-                                cell.copy(isHit = true)
-                            } else {
-                                cell.copy(isMiss = true)
-                            }
-                        } else cell
+                    NavHost(
+                        navController = navController,
+                        startDestination = if (authEmail.isNullOrEmpty()) "login" else "registration"
+                    ) {
+                        composable("login") {
+                            LoginScreen(authViewModel = authViewModel, navController = navController)
+                        }
+                        composable("registration") {
+                            RegistrationScreen(authViewModel = authViewModel, navController = navController)
+                        }
+                        composable("game_board") {
+                            GameScreen(navController = navController)
+                        }
                     }
                 }
-            )
-        }
-    }
-}
-
-@Composable
-fun BattleshipGrid(
-    board: List<Cell>,
-    onCellClick: (Int, Int) -> Unit
-) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(10),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        items(100) { index ->
-            val cell = board[index]
-            BattleshipCell(
-                cell = cell,
-                onClick = { onCellClick(cell.x, cell.y) }
-            )
-        }
-    }
-}
-
-@Composable
-fun BattleshipCell(
-    cell: Cell,
-    onClick: () -> Unit
-) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .size(32.dp)
-            .aspectRatio(1f),
-        enabled = !cell.isHit && !cell.isMiss,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = when {
-                cell.isHit -> Color.Red
-                cell.isMiss -> Color.Gray
-                else -> MaterialTheme.colorScheme.primary
             }
-        )
-    ) {
-        // Cell content can be added here if needed
-    }
-}
-
-private fun createInitialBoard(): List<Cell> {
-    val board = mutableListOf<Cell>()
-    for (y in 0..9) {
-        for (x in 0..9) {
-            board.add(Cell(x, y))
         }
-    }
-    return board
-}
-
-@Preview
-@Composable
-fun BattleshipGamePreview() {
-    BattleshipsTheme {
-        BattleshipGame()
     }
 }
