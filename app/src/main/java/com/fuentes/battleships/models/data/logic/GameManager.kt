@@ -14,7 +14,4 @@ class GameManager {
         return player2.grid.placeShip(ship, startX, startY)
     }
 
-    fun isGameOver(): Boolean {
-        return player1.grid.allShipsSunk() || player2.grid.allShipsSunk()
-    }
 }
