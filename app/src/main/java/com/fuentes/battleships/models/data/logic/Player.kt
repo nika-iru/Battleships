@@ -1,6 +1,7 @@
 package com.fuentes.battleships.models.data.logic
 
-import com.fuentes.battleships.models.data.logic.Grid
+import com.fuentes.battleships.models.data.Grid.Grid
+import com.fuentes.battleships.models.data.Ships.MainShip
 
 class Player(val name: String) {
     val grid = Grid(name)

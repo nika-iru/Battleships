@@ -1,5 +1,7 @@
 package com.fuentes.battleships.models.data.logic
 
+import com.fuentes.battleships.models.data.Ships.MainShip
+
 class GameManager {
     val player1 = Player("Player 1")
     val player2 = Player("Player 2")
