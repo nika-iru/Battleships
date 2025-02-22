@@ -43,7 +43,7 @@ fun HomeScreen(
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { //add authentication for login here
-                navController.navigate("game_board") }) {
+                navController.navigate("game") }) {
             Text(text = "Play")
         }
 

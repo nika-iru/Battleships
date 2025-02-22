@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
                         composable("registration") {
                             RegistrationScreen(authViewModel = authViewModel, navController = navController)
                         }
-                        composable("game_board") {
+                        composable("game") {
                             GameScreen(navController = navController)
                         }
                         composable("home") {
