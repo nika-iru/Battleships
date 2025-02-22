@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "202765760718",
+    "project_id": "battleships-fuentes-dawa",
+    "storage_bucket": "battleships-fuentes-dawa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:202765760718:android:c442c16f2d0cce3c90f89f",
+        "android_client_info": {
+          "package_name": "com.fuentes.battleships"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "202765760718-0n2qq3d5la5be8vidn3gv1q791j7ui0d.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fuentes.battleships",
+            "certificate_hash": "2f0662b9b68ec6e02b81a8f3983edd4e4ea718be"
+          }
+        },
+        {
+          "client_id": "202765760718-hjut6cq0ie0cu7vv7em2rirvvc3eoeq8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDnXyG2-2D_gMH2omuFJlyilPh8bFyBqsg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "202765760718-hjut6cq0ie0cu7vv7em2rirvvc3eoeq8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,55 +27,72 @@ import androidx.navigation.NavController
 
 
 @Composable
-fun RegistrationScreen(modifier: Modifier = Modifier, authViewModel: AuthViewModel, navController: NavController) {
-    var username by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+fun RegistrationScreen(
+    modifier: Modifier = Modifier,
+    authViewModel: AuthViewModel,
+    navController: NavController
+) {
+    Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .safeContentPadding() // adds safe padding, so that the content doesn't overlap the system bars
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            var email by remember { mutableStateOf("") }
+            var password by remember { mutableStateOf("") }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(text = "Register", style = MaterialTheme.typography.headlineMedium)
+            Text(text = "Registration Screen")
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        OutlinedTextField(
-            value = username,
-            onValueChange = { username = it },
-            label = { Text("Username") },
-            modifier = Modifier.fillMaxWidth()
-        )
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("Email") },
+                modifier = Modifier.fillMaxWidth()
+            )
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth()
-        )
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Password") },
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth()
+            )
 
-        Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
-        )
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    authViewModel.registerUser(email, password)
 
-        Spacer(modifier = Modifier.height(16.dp))
+                    navController.popBackStack("login", inclusive = false)
 
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { //add authentication for registration here then navigate back to login page
-                navController.navigate("login") }) {
-            Text(text = "Register")
+                    // or pop back to specific route
+                    // navController.popBackStack("login", inclusive = false)
+                }) {
+                Text(text = "Register")
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    navController.popBackStack("login", inclusive = false)
+
+                    // or pop back to specific route
+                    // navController.popBackStack("login", inclusive = false)
+                }) {
+                Text(text = "Cancel")
+            }
         }
     }
 }

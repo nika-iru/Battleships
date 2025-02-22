@@ -24,6 +24,7 @@ import com.fuentes.battleships.models.auth.ui.AuthViewModel
 import com.fuentes.battleships.models.auth.ui.LoginScreen
 import com.fuentes.battleships.models.game.ui.GameScreen
 import com.fuentes.battleships.models.auth.ui.RegistrationScreen
+import com.fuentes.battleships.models.auth.ui.HomeScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,7 +42,7 @@ class MainActivity : ComponentActivity() {
 
                     NavHost(
                         navController = navController,
-                        startDestination = if (authEmail.isNullOrEmpty()) "login" else "registration"
+                        startDestination = if (authEmail.isNullOrEmpty()) "login" else "home"
                     ) {
                         composable("login") {
                             LoginScreen(authViewModel = authViewModel, navController = navController)
@@ -51,6 +52,9 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("game_board") {
                             GameScreen(navController = navController)
+                        }
+                        composable("home") {
+                            HomeScreen(authViewModel = authViewModel, navController = navController)
                         }
                     }
                 }
