@@ -51,7 +51,7 @@ import com.fuentes.battleships.models.game.data.Player
 import com.fuentes.battleships.models.game.data.GameState
 import com.fuentes.battleships.models.game.data.GamePhase
 import com.fuentes.battleships.models.game.data.BoardView
-
+import kotlinx.coroutines.delay
 
 @Composable
 fun GameScreen(
@@ -64,9 +64,23 @@ fun GameScreen(
     var hitMissMessage by remember { mutableStateOf("") }
     var showTurnNotification by remember { mutableStateOf(false) }
     var turnMessage by remember { mutableStateOf("") }
+    var timer by remember { mutableStateOf(15) } // 15-second timer
+    var isTimerRunning by remember { mutableStateOf(false) } // Timer state
 
-    // Remove username dialog and related functionality
-    var currentPlayerNumber by remember { mutableStateOf(1) }
+    // Timer logic
+    LaunchedEffect(isTimerRunning, timer) {
+        if (isTimerRunning && timer > 0) {
+            delay(1000L) // Wait for 1 second
+            timer-- // Decrement timer
+        } else if (timer == 0) {
+            // Timer ran out, switch turns
+            isTimerRunning = false
+            gameState = gameState.copy(isPlayer1Turn = !gameState.isPlayer1Turn)
+            timer = 15 // Reset timer
+            showTurnNotification = true
+            turnMessage = "Time's up! Player ${if (!gameState.isPlayer1Turn) 1 else 2}'s turn"
+        }
+    }
 
     // Update LaunchedEffect to remove username references
     LaunchedEffect(gameState.isPlayer1Turn, gameState.phase) {
@@ -104,7 +118,7 @@ fun GameScreen(
                         if (gameState.boardView == BoardView.OWN_BOARD) {
                             "Player ${if (gameState.isPlayer1Turn) 1 else 2}'s Fleet"
                         } else {
-                            "Player ${if (gameState.isPlayer1Turn) 1 else 2}'s Attack Turn"
+                            "Player ${if (gameState.isPlayer1Turn) 1 else 2}'s Attack Turn - Time Left: $timer seconds"
                         }
                     }
                     GamePhase.GAME_OVER -> "Game Over! Player ${if (gameState.isPlayer1Turn) 1 else 2} Wins!"
@@ -137,6 +151,7 @@ fun GameScreen(
                         onClick = {
                             gameState = gameState.copy(boardView = BoardView.OPPONENT_BOARD)
                             gameBoard = createBoardForAttacking(gameState)
+                            isTimerRunning = true // Start the timer
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
@@ -228,6 +243,10 @@ fun GameScreen(
                                     if (newState.phase == GamePhase.GAME_OVER) {
                                         hitMissMessage = "Game Over! Player ${if (gameState.isPlayer1Turn) 1 else 2} Wins!"
                                     }
+
+                                    // Reset timer after attack
+                                    isTimerRunning = false
+                                    timer = 15
                                 }
                             }
                         }
@@ -241,6 +260,8 @@ fun GameScreen(
                     onClick = {
                         gameState = GameState()
                         gameBoard = createInitialBoard()
+                        timer = 15 // Reset timer
+                        isTimerRunning = false
                     },
                     modifier = Modifier.padding(top = 16.dp)
                 ) {
