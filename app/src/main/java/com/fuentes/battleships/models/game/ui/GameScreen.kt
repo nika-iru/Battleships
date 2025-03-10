@@ -24,7 +24,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -61,48 +60,23 @@ fun GameScreen(
 ) {
     var gameBoard by remember { mutableStateOf(createInitialBoard()) }
     var gameState by remember { mutableStateOf(GameState()) }
-    var showSwitchPlayerDialog by remember { mutableStateOf(false) }
-    var currentPlayerText by remember { mutableStateOf("") }
     var showHitMissDialog by remember { mutableStateOf(false) }
     var hitMissMessage by remember { mutableStateOf("") }
+    var showTurnNotification by remember { mutableStateOf(false) }
+    var turnMessage by remember { mutableStateOf("") }
 
-    // Username state management
-    var showUsernameDialog by remember { mutableStateOf(true) }
+    // Remove username dialog and related functionality
     var currentPlayerNumber by remember { mutableStateOf(1) }
 
-    // Ask for player 1 username
-    if (showUsernameDialog && currentPlayerNumber == 1) {
-        UsernameDialog(
-            playerNumber = 1,
-            onSubmit = { username ->
-                // Set player 1 username
-                gameState = gameState.copy(
-                    player1 = gameState.player1.copy(username = username)
-                )
-                currentPlayerNumber = 2
-            }
-        )
-    }
-
-    // Ask for player 2 username
-    if (showUsernameDialog && currentPlayerNumber == 2) {
-        UsernameDialog(
-            playerNumber = 2,
-            onSubmit = { username ->
-                // Set player 2 username
-                gameState = gameState.copy(
-                    player2 = gameState.player2.copy(username = username)
-                )
-                showUsernameDialog = false
-            }
-        )
-    }
-
-    // 6. Update the LaunchedEffect to use usernames for the player switching message
+    // Update LaunchedEffect to remove username references
     LaunchedEffect(gameState.isPlayer1Turn, gameState.phase) {
-        if (gameState.phase == GamePhase.PLACEMENT && gameState.player1.ships.size == 2 && !showSwitchPlayerDialog) {
-            showSwitchPlayerDialog = true
-            currentPlayerText = "${gameState.player2.username}'s turn to place ships"
+        if (gameState.phase == GamePhase.PLACEMENT && gameState.player1.ships.size == 2 && !showTurnNotification) {
+            // Show simple turn notification for Player 2
+            showTurnNotification = true
+            turnMessage = "Player 2's turn to place ships"
+
+            // After showing notification, initialize Player 2's board as empty
+            gameBoard = createInitialBoard()
         } else if (gameState.phase == GamePhase.BATTLE && gameState.boardView == BoardView.OWN_BOARD) {
             // Update the board view to match the current player's ships
             gameBoard = createBoardWithShips(
@@ -120,21 +94,20 @@ fun GameScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(16.dp)
         ) {
-            // Game header
+            // Game header - removed username references
             Text(
                 text = when (gameState.phase) {
                     GamePhase.PLACEMENT -> {
-                        val currentPlayer = if (gameState.isPlayer1Turn) gameState.player1 else gameState.player2
-                        "${currentPlayer.username} Place Your Ship (${currentPlayer.ships.size}/2)"
+                        "Player ${if (gameState.isPlayer1Turn) 1 else 2} Place Your Ship (${if (gameState.isPlayer1Turn) gameState.player1.ships.size else gameState.player2.ships.size}/2)"
                     }
                     GamePhase.BATTLE -> {
                         if (gameState.boardView == BoardView.OWN_BOARD) {
-                            "${if (gameState.isPlayer1Turn) gameState.player1.username else gameState.player2.username}'s Fleet"
+                            "Player ${if (gameState.isPlayer1Turn) 1 else 2}'s Fleet"
                         } else {
-                            "${if (gameState.isPlayer1Turn) gameState.player1.username else gameState.player2.username}'s Attack Turn"
+                            "Player ${if (gameState.isPlayer1Turn) 1 else 2}'s Attack Turn"
                         }
                     }
-                    GamePhase.GAME_OVER -> "Game Over! ${if (gameState.isPlayer1Turn) gameState.player1.username else gameState.player2.username} Wins!"
+                    GamePhase.GAME_OVER -> "Game Over! Player ${if (gameState.isPlayer1Turn) 1 else 2} Wins!"
                 },
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
@@ -152,39 +125,21 @@ fun GameScreen(
                 }
             }
 
-            // Battle phase controls - switch between viewing your ships and attacking
+            // Remove View Fleet button, only keep Attack Enemy in battle phase
             if (gameState.phase == GamePhase.BATTLE && gameState.phase != GamePhase.GAME_OVER) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Button(
-                        onClick = {
-                            gameState = gameState.copy(boardView = BoardView.OWN_BOARD)
-                            gameBoard = createBoardWithShips(
-                                if (gameState.isPlayer1Turn) gameState.player1.ships else gameState.player2.ships,
-                                if (gameState.isPlayer1Turn) gameState.player2.hits else gameState.player1.hits,
-                                if (gameState.isPlayer1Turn) gameState.player2.misses else gameState.player1.misses
-                            )
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (gameState.boardView == BoardView.OWN_BOARD)
-                                MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
-                        )
-                    ) {
-                        Text("View Your Fleet")
-                    }
-
                     Button(
                         onClick = {
                             gameState = gameState.copy(boardView = BoardView.OPPONENT_BOARD)
                             gameBoard = createBoardForAttacking(gameState)
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (gameState.boardView == BoardView.OPPONENT_BOARD)
-                                MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                            containerColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
                         Text("Attack Enemy")
@@ -229,6 +184,7 @@ fun GameScreen(
                     }
                 }
             }
+
             // Board Title
             if (gameState.phase == GamePhase.BATTLE) {
                 Text(
@@ -270,7 +226,7 @@ fun GameScreen(
 
                                     // Check for game over
                                     if (newState.phase == GamePhase.GAME_OVER) {
-                                        hitMissMessage = "Game Over! ${if (gameState.isPlayer1Turn) "Player 1" else "Player 2"} Wins!"
+                                        hitMissMessage = "Game Over! Player ${if (gameState.isPlayer1Turn) 1 else 2} Wins!"
                                     }
                                 }
                             }
@@ -294,16 +250,14 @@ fun GameScreen(
         }
     }
 
-    if (showSwitchPlayerDialog) {
-        PlayerSwitchDialog(
-            title = "Switch Players",
-            message = currentPlayerText,
-            onConfirm = {
-                showSwitchPlayerDialog = false
-                if (gameState.phase == GamePhase.PLACEMENT && gameState.player1.ships.size == 2) {
-                    // Initialize Player 2's board as empty
-                    gameBoard = createInitialBoard()
-                } else if (gameState.phase == GamePhase.BATTLE) {
+    // Simple turn notification instead of dialog
+    if (showTurnNotification) {
+        SimpleTurnNotification(
+            message = turnMessage,
+            onDismiss = {
+                showTurnNotification = false
+
+                if (gameState.phase == GamePhase.BATTLE) {
                     // Start with viewing your own ships
                     gameState = gameState.copy(boardView = BoardView.OWN_BOARD)
                     gameBoard = createBoardWithShips(
@@ -316,7 +270,7 @@ fun GameScreen(
         )
     }
 
-    // 7. Update the hit/miss dialog section to use usernames
+    // Hit/miss dialog
     if (showHitMissDialog) {
         HitMissDialog(
             message = hitMissMessage,
@@ -325,93 +279,12 @@ fun GameScreen(
 
                 // If game is over, don't switch players
                 if (gameState.phase != GamePhase.GAME_OVER) {
-                    // Show switch player dialog after hit/miss message
-                    showSwitchPlayerDialog = true
-                    currentPlayerText = "${if (!gameState.isPlayer1Turn) gameState.player1.username else gameState.player2.username}'s turn"
+                    // Show turn notification after hit/miss message
+                    showTurnNotification = true
+                    turnMessage = "Player ${if (!gameState.isPlayer1Turn) 1 else 2}'s turn"
                 }
             }
         )
-    }
-}
-
-@Composable
-fun UsernameDialog(
-    playerNumber: Int,
-    onSubmit: (String) -> Unit
-) {
-    var username by remember { mutableStateOf("") }
-
-    Dialog(
-        onDismissRequest = { /* Do nothing, force entry */ },
-        properties = DialogProperties(dismissOnClickOutside = false)
-    ) {
-        Card(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            ),
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = 8.dp
-            ),
-            shape = MaterialTheme.shapes.medium
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Welcome to Battleships!",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                Text(
-                    text = "Player $playerNumber, enter your name:",
-                    style = MaterialTheme.typography.titleMedium,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                // Username text field
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    label = { Text("Username") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                )
-
-                Button(
-                    onClick = {
-                        // Use default name if empty
-                        if (username.isBlank()) {
-                            onSubmit("Player $playerNumber")
-                        } else {
-                            onSubmit(username)
-                        }
-                    },
-                    modifier = Modifier
-                        .padding(top = 16.dp)
-                        .fillMaxWidth(0.7f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ),
-                    shape = MaterialTheme.shapes.medium,
-                    enabled = true
-                ) {
-                    Text(
-                        "Start Game",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-            }
-        }
     }
 }
 
@@ -434,14 +307,15 @@ fun LegendItem(color: Color, text: String) {
         )
     }
 }
+
+// Simplified turn notification to replace the previous dialog
 @Composable
-fun PlayerSwitchDialog(
-    title: String,
+fun SimpleTurnNotification(
     message: String,
-    onConfirm: () -> Unit
+    onDismiss: () -> Unit
 ) {
     Dialog(
-        onDismissRequest = { onConfirm() },
+        onDismissRequest = { onDismiss() },
         properties = DialogProperties(dismissOnClickOutside = false)
     ) {
         Card(
@@ -449,64 +323,35 @@ fun PlayerSwitchDialog(
                 .padding(16.dp)
                 .fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                containerColor = MaterialTheme.colorScheme.primaryContainer
             ),
             elevation = CardDefaults.cardElevation(
-                defaultElevation = 8.dp
+                defaultElevation = 4.dp
             ),
             shape = MaterialTheme.shapes.medium
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier.padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                Text(
                     text = message,
                     style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(vertical = 16.dp)
                 )
 
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    ),
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Text(
-                        text = "Hand the device to the other player",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(12.dp)
-                    )
-                }
-
                 Button(
-                    onClick = onConfirm,
+                    onClick = onDismiss,
                     modifier = Modifier
-                        .padding(top = 16.dp)
-                        .fillMaxWidth(0.7f),
+                        .padding(top = 8.dp)
+                        .fillMaxWidth(0.5f),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
-                    ),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Text(
-                        "I'm Ready",
-                        style = MaterialTheme.typography.titleMedium
                     )
+                ) {
+                    Text("Continue")
                 }
             }
         }
@@ -791,10 +636,12 @@ private fun createBoardForAttacking(gameState: GameState): List<Cell> {
         val coordinate = Pair(cell.x, cell.y)
         val isHit = coordinate in attackingPlayer.hits
         val isMiss = coordinate in attackingPlayer.misses
+
+        // Only mark as ship if it was hit
         val isShip = isHit && attackedPlayer.ships.any { ship -> coordinate in ship }
 
         cell.copy(
-            // Only show enemy ships if they were hit
+            // Never show enemy ships unless they were hit
             isShip = isShip,
             isHit = isHit,
             isMiss = isMiss
@@ -817,6 +664,7 @@ private fun calculateShipPositions(startX: Int, startY: Int, isHorizontal: Boole
         )
     }
 }
+
 @Composable
 fun BattleshipGrid(
     board: List<Cell>,
@@ -889,7 +737,6 @@ fun BattleshipGrid(
     }
 }
 
-
 private fun createInitialBoard(): List<Cell> {
     val board = mutableListOf<Cell>()
     for (y in 0..9) {
@@ -915,4 +762,3 @@ fun GameScreenPreview() {
         )
     }
 }
-
