@@ -480,7 +480,7 @@ fun BattleshipCell(
     }
 }
 
-private fun handlePlacement(
+fun handlePlacement(
     x: Int,
     y: Int,
     gameState: GameState,
@@ -533,7 +533,7 @@ private fun handlePlacement(
     }
 }
 
-private fun handleAttack(
+fun handleAttack(
     x: Int,
     y: Int,
     gameState: GameState,
@@ -590,7 +590,7 @@ private fun handleAttack(
     }
 }
 
-private fun createBoardWithShips(
+fun createBoardWithShips(
     ships: List<List<Pair<Int, Int>>>,
     opponentHits: List<Pair<Int, Int>>,
     opponentMisses: List<Pair<Int, Int>>
@@ -611,7 +611,7 @@ private fun createBoardWithShips(
     }
 }
 
-private fun createBoardForAttacking(gameState: GameState): List<Cell> {
+fun createBoardForAttacking(gameState: GameState): List<Cell> {
     val attackedPlayer = if (gameState.isPlayer1Turn) gameState.player2 else gameState.player1
     val attackingPlayer = if (gameState.isPlayer1Turn) gameState.player1 else gameState.player2
 

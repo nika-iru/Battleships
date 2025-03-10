@@ -39,11 +39,20 @@ fun HomeScreen(
         Button(
             modifier = Modifier.fillMaxWidth(),
             onClick = { //add authentication for login here
-                navController.navigate("game") }) {
-            Text(text = "Play")
+                navController.navigate("single") }) {
+            Text(text = "Singleplayer")
         }
 
         Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { //add authentication for login here
+                navController.navigate("game") }) {
+            Text(text = "Multiplayer")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = {
             authViewModel.logout()

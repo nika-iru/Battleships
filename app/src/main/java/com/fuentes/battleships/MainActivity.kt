@@ -18,6 +18,7 @@ import com.fuentes.battleships.modules.auth.ui.LoginScreen
 import com.fuentes.battleships.modules.game.ui.GameScreen
 import com.fuentes.battleships.modules.auth.ui.RegistrationScreen
 import com.fuentes.battleships.modules.auth.ui.HomeScreen
+import com.fuentes.battleships.modules.game.ui.SinglePlayerGameScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,6 +49,9 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("home") {
                             HomeScreen(authViewModel = authViewModel, navController = navController)
+                        }
+                        composable("single") {
+                            SinglePlayerGameScreen(authViewModel = authViewModel, navController = navController)
                         }
                     }
                 }
