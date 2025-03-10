@@ -46,7 +46,6 @@ import com.fuentes.battleships.modules.game.data.models.Cell
 import com.fuentes.battleships.modules.game.data.models.GamePhase
 import com.fuentes.battleships.modules.game.data.models.BoardView
 import kotlinx.coroutines.delay
-
 @Composable
 fun GameScreen(
     modifier: Modifier = Modifier,
@@ -77,7 +76,7 @@ fun GameScreen(
         }
     }
 
-    // Update LaunchedEffect to remove username references
+    // Modified LaunchedEffect to automatically set attack mode when turn starts
     LaunchedEffect(gameState.isPlayer1Turn, gameState.phase) {
         if (gameState.phase == GamePhase.PLACEMENT && gameState.player1.ships.size == 2 && !showTurnNotification) {
             // Show simple turn notification for Player 2
@@ -86,13 +85,13 @@ fun GameScreen(
 
             // After showing notification, initialize Player 2's board as empty
             gameBoard = createInitialBoard()
-        } else if (gameState.phase == GamePhase.BATTLE && gameState.boardView == BoardView.OWN_BOARD) {
-            // Update the board view to match the current player's ships
-            gameBoard = createBoardWithShips(
-                if (gameState.isPlayer1Turn) gameState.player1.ships else gameState.player2.ships,
-                if (gameState.isPlayer1Turn) gameState.player2.hits else gameState.player1.hits,
-                if (gameState.isPlayer1Turn) gameState.player2.misses else gameState.player1.misses
-            )
+        } else if (gameState.phase == GamePhase.BATTLE) {
+            // Automatically set to attack mode when a player's turn begins
+            if (!showTurnNotification && !showHitMissDialog) {
+                gameState = gameState.copy(boardView = BoardView.OPPONENT_BOARD)
+                gameBoard = createBoardForAttacking(gameState)
+                isTimerRunning = true // Start the timer automatically
+            }
         }
     }
 
@@ -110,11 +109,7 @@ fun GameScreen(
                         "Player ${if (gameState.isPlayer1Turn) 1 else 2} Place Your Ship (${if (gameState.isPlayer1Turn) gameState.player1.ships.size else gameState.player2.ships.size}/2)"
                     }
                     GamePhase.BATTLE -> {
-                        if (gameState.boardView == BoardView.OWN_BOARD) {
-                            "Player ${if (gameState.isPlayer1Turn) 1 else 2}'s Fleet"
-                        } else {
-                            "Player ${if (gameState.isPlayer1Turn) 1 else 2}'s Attack Turn - Time Left: $timer seconds"
-                        }
+                        "Player ${if (gameState.isPlayer1Turn) 1 else 2}'s Attack Turn - Time Left: $timer seconds"
                     }
                     GamePhase.GAME_OVER -> "Game Over! Player ${if (gameState.isPlayer1Turn) 1 else 2} Wins!"
                 },
@@ -134,28 +129,7 @@ fun GameScreen(
                 }
             }
 
-            // Remove View Fleet button, only keep Attack Enemy in battle phase
-            if (gameState.phase == GamePhase.BATTLE && gameState.phase != GamePhase.GAME_OVER) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Button(
-                        onClick = {
-                            gameState = gameState.copy(boardView = BoardView.OPPONENT_BOARD)
-                            gameBoard = createBoardForAttacking(gameState)
-                            isTimerRunning = true // Start the timer
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Text("Attack Enemy")
-                    }
-                }
-            }
+            // Removed "Attack Enemy" button since we auto-transition to attack mode
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -198,10 +172,7 @@ fun GameScreen(
             // Board Title
             if (gameState.phase == GamePhase.BATTLE) {
                 Text(
-                    text = when (gameState.boardView) {
-                        BoardView.OWN_BOARD -> "Your Fleet (X = where enemy attacked)"
-                        BoardView.OPPONENT_BOARD -> "Enemy Waters (Click to Attack!)"
-                    },
+                    text = "Enemy Waters (Click to Attack!)",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -212,7 +183,7 @@ fun GameScreen(
                 board = gameBoard,
                 enabled = when (gameState.phase) {
                     GamePhase.PLACEMENT -> true
-                    GamePhase.BATTLE -> gameState.boardView == BoardView.OPPONENT_BOARD
+                    GamePhase.BATTLE -> true  // Always enabled during battle phase since we're always in attack mode
                     GamePhase.GAME_OVER -> false
                 },
                 onCellClick = { x, y ->
@@ -222,27 +193,25 @@ fun GameScreen(
                             gameBoard = newBoard
                         }
                         GamePhase.BATTLE -> {
-                            if (gameState.boardView == BoardView.OPPONENT_BOARD) {
-                                handleAttack(x, y, gameState, gameBoard) { newState, newBoard, isHit ->
-                                    val attackedPlayer = if (gameState.isPlayer1Turn) gameState.player2 else gameState.player1
-                                    val attackingPlayer = if (gameState.isPlayer1Turn) gameState.player1 else gameState.player2
+                            handleAttack(x, y, gameState, gameBoard) { newState, newBoard, isHit ->
+                                val attackedPlayer = if (gameState.isPlayer1Turn) gameState.player2 else gameState.player1
+                                val attackingPlayer = if (gameState.isPlayer1Turn) gameState.player1 else gameState.player2
 
-                                    // Display hit/miss notification
-                                    hitMissMessage = if (isHit) "Hit! You found an enemy ship!" else "Miss! No ship at this location."
-                                    showHitMissDialog = true
+                                // Display hit/miss notification
+                                hitMissMessage = if (isHit) "Hit! You found an enemy ship!" else "Miss! No ship at this location."
+                                showHitMissDialog = true
 
-                                    gameState = newState
-                                    gameBoard = newBoard
+                                gameState = newState
+                                gameBoard = newBoard
 
-                                    // Check for game over
-                                    if (newState.phase == GamePhase.GAME_OVER) {
-                                        hitMissMessage = "Game Over! Player ${if (gameState.isPlayer1Turn) 1 else 2} Wins!"
-                                    }
-
-                                    // Reset timer after attack
-                                    isTimerRunning = false
-                                    timer = 15
+                                // Check for game over
+                                if (newState.phase == GamePhase.GAME_OVER) {
+                                    hitMissMessage = "Game Over! Player ${if (gameState.isPlayer1Turn) 1 else 2} Wins!"
                                 }
+
+                                // Reset timer after attack
+                                isTimerRunning = false
+                                timer = 15
                             }
                         }
                         GamePhase.GAME_OVER -> { /* Do nothing */ }
@@ -266,21 +235,18 @@ fun GameScreen(
         }
     }
 
-    // Simple turn notification instead of dialog
+    // Simplified turn notification
     if (showTurnNotification) {
         SimpleTurnNotification(
             message = turnMessage,
             onDismiss = {
                 showTurnNotification = false
 
+                // When a notification is dismissed, automatically set to attack mode for battle phase
                 if (gameState.phase == GamePhase.BATTLE) {
-                    // Start with viewing your own ships
-                    gameState = gameState.copy(boardView = BoardView.OWN_BOARD)
-                    gameBoard = createBoardWithShips(
-                        if (gameState.isPlayer1Turn) gameState.player1.ships else gameState.player2.ships,
-                        if (gameState.isPlayer1Turn) gameState.player2.hits else gameState.player1.hits,
-                        if (gameState.isPlayer1Turn) gameState.player2.misses else gameState.player1.misses
-                    )
+                    gameState = gameState.copy(boardView = BoardView.OPPONENT_BOARD)
+                    gameBoard = createBoardForAttacking(gameState)
+                    isTimerRunning = true // Start the timer
                 }
             }
         )
@@ -303,6 +269,7 @@ fun GameScreen(
         )
     }
 }
+
 
 @Composable
 fun LegendItem(color: Color, text: String) {
