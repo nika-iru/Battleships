@@ -1,4 +1,4 @@
-package com.fuentes.battleships.models.auth.ui
+package com.fuentes.battleships.modules.auth.ui
 
 import android.content.Context
 import android.util.Log
@@ -7,10 +7,10 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.auth
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,10 +18,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
 import java.util.UUID
 
 class AuthViewModel : ViewModel() {
-    // Expose screen UI state
+
     private val _uiState = MutableStateFlow(AuthState())
     val uiState: StateFlow<AuthState> = _uiState.asStateFlow()
 
@@ -31,6 +32,7 @@ class AuthViewModel : ViewModel() {
                 ->
                 currentState.copy(
                     email = Firebase.auth.currentUser?.email,
+                    userId = Firebase.auth.currentUser?.uid,
                 )
             }
         }
@@ -43,8 +45,17 @@ class AuthViewModel : ViewModel() {
             ->
             currentState.copy(
                 email = null,
+                userId = null,
             )
         }
+    }
+
+    fun getCurrentUserId(): String? {
+        return Firebase.auth.currentUser?.uid
+    }
+
+    fun getCurrentUserEmail(): String? {
+        return Firebase.auth.currentUser?.email
     }
 
     fun registerUser(email: String, password: String) {
@@ -69,6 +80,7 @@ class AuthViewModel : ViewModel() {
                         ->
                         currentState.copy(
                             email = currentUser?.email,
+                            userId = Firebase.auth.currentUser?.uid
                         )
                     }
                 } else {
@@ -124,6 +136,7 @@ class AuthViewModel : ViewModel() {
                                     ->
                                     currentState.copy(
                                         email = currentUser.email,
+                                        userId = Firebase.auth.currentUser?.uid
                                     )
                                 }
                             }

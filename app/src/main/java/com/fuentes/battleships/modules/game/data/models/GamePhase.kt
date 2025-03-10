@@ -1,4 +1,4 @@
-package com.fuentes.battleships.models.game.data
+package com.fuentes.battleships.modules.game.data.models
 
 enum class GamePhase {
     PLACEMENT,

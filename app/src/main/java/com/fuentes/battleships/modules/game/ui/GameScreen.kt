@@ -1,4 +1,4 @@
-package com.fuentes.battleships.models.game.ui
+package com.fuentes.battleships.modules.game.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,7 +24,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,24 +37,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
-import com.fuentes.battleships.models.auth.ui.AuthViewModel
-import com.fuentes.battleships.ui.theme.BattleshipsTheme
-import com.fuentes.battleships.models.game.data.Cell
-import com.fuentes.battleships.models.game.data.Player
-import com.fuentes.battleships.models.game.data.GameState
-import com.fuentes.battleships.models.game.data.GamePhase
-import com.fuentes.battleships.models.game.data.BoardView
+import com.fuentes.battleships.modules.auth.ui.AuthViewModel
+import com.fuentes.battleships.modules.game.data.models.Cell
+import com.fuentes.battleships.modules.game.data.models.GamePhase
+import com.fuentes.battleships.modules.game.data.models.BoardView
 import kotlinx.coroutines.delay
 
 @Composable
 fun GameScreen(
     modifier: Modifier = Modifier,
+    authViewModel: AuthViewModel,
     navController: NavController
 ) {
     var gameBoard by remember { mutableStateOf(createInitialBoard()) }
@@ -670,7 +665,7 @@ private fun createBoardForAttacking(gameState: GameState): List<Cell> {
     }
 }
 
-private fun calculateShipPositions(startX: Int, startY: Int, isHorizontal: Boolean): List<Pair<Int, Int>> {
+fun calculateShipPositions(startX: Int, startY: Int, isHorizontal: Boolean): List<Pair<Int, Int>> {
     return if (isHorizontal) {
         listOf(
             Pair(startX, startY),
@@ -758,7 +753,7 @@ fun BattleshipGrid(
     }
 }
 
-private fun createInitialBoard(): List<Cell> {
+fun createInitialBoard(): List<Cell> {
     val board = mutableListOf<Cell>()
     for (y in 0..9) {
         for (x in 0..9) {
@@ -766,20 +761,4 @@ private fun createInitialBoard(): List<Cell> {
         }
     }
     return board
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GameScreenPreview() {
-    // Use the correct theme from your code
-    BattleshipsTheme {
-        // Create a dummy NavController for preview
-        val navController = rememberNavController()
-
-        // Use your GameScreen composable directly
-        GameScreen(
-            modifier = Modifier.padding(16.dp),
-            navController = navController
-        )
-    }
 }

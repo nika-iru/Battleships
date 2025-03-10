@@ -1,4 +1,4 @@
-package com.fuentes.battleships.models.auth.ui
+package com.fuentes.battleships.modules.auth.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,17 +21,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 
 
 @Composable
-fun RegistrationScreen(
+fun LoginScreen(
     modifier: Modifier = Modifier,
-    authViewModel: AuthViewModel,
-    navController: NavController
+    navController: NavController,
+    authViewModel: AuthViewModel
 ) {
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+
+    val appContext = LocalContext.current
+
     Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
         Column(
             modifier = Modifier
@@ -42,10 +48,7 @@ fun RegistrationScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            var email by remember { mutableStateOf("") }
-            var password by remember { mutableStateOf("") }
-
-            Text(text = "Registration Screen")
+            Text(text = "Login", style = MaterialTheme.typography.headlineMedium)
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -66,32 +69,32 @@ fun RegistrationScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    authViewModel.registerUser(email, password)
-
-                    navController.popBackStack("login", inclusive = false)
-
-                    // or pop back to specific route
-                    // navController.popBackStack("login", inclusive = false)
-                }) {
-                Text(text = "Register")
+            Button(modifier = Modifier.fillMaxWidth(), onClick = {
+                authViewModel.signInUserWithEmailAndPassword(email, password)
+            }) {
+                Text(text = "Login")
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Google sign-in button
             Button(
-                modifier = Modifier.fillMaxWidth(),
                 onClick = {
-                    navController.popBackStack("login", inclusive = false)
+                    authViewModel.signInWithGoogle(appContext)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(modifier = Modifier.padding(start = 8.dp), text = "Sign in with Google")
+            }
 
-                    // or pop back to specific route
-                    // navController.popBackStack("login", inclusive = false)
-                }) {
-                Text(text = "Cancel")
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(modifier = Modifier.fillMaxWidth(), onClick = {
+                navController.navigate("registration")
+            }) {
+                Text(text = "Sign Up")
             }
         }
     }
