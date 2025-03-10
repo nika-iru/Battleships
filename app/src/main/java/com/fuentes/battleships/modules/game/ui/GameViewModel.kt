@@ -1,4 +1,4 @@
-package com.fuentes.battleships.modules.game.ui
+/* package com.fuentes.battleships.modules.game.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -181,3 +181,4 @@ class GameViewModel(private val authViewModel: AuthViewModel) : ViewModel() {
         unsubscribeFromGameSession() // Stop listening when ViewModel is destroyed
     }
 }
+*/
