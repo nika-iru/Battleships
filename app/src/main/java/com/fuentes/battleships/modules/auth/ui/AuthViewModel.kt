@@ -32,7 +32,7 @@ class AuthViewModel : ViewModel() {
                 ->
                 currentState.copy(
                     email = Firebase.auth.currentUser?.email,
-                    userId = Firebase.auth.currentUser?.uid,
+                    userId = Firebase.auth.currentUser?.uid
                 )
             }
         }
@@ -83,6 +83,8 @@ class AuthViewModel : ViewModel() {
                             userId = Firebase.auth.currentUser?.uid
                         )
                     }
+
+
                 } else {
                     Log.w("FIREBASE_REGISTER", "signInWithEmailAndPassword:failure")
                 }

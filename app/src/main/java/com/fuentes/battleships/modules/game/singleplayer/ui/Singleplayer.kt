@@ -26,11 +26,10 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.fuentes.battleships.modules.auth.ui.AuthViewModel
 import com.fuentes.battleships.modules.game.singleplayer.data.BoardView
+import com.fuentes.battleships.modules.game.singleplayer.data.GameLogic
 import com.fuentes.battleships.modules.game.singleplayer.data.GamePhase
 import com.fuentes.battleships.modules.game.singleplayer.data.GameState
-import com.fuentes.battleships.modules.game.singleplayer.data.Player
 import kotlinx.coroutines.delay
-import kotlin.random.Random
 
 @Composable
 fun SinglePlayerGameScreen(
@@ -38,7 +37,8 @@ fun SinglePlayerGameScreen(
     authViewModel: AuthViewModel,
     navController: NavController
 ) {
-    var gameBoard by remember { mutableStateOf(createInitialBoard()) }
+    val gameLogic = GameLogic()
+    var gameBoard by remember { mutableStateOf(gameLogic.createInitialBoard()) }
     var gameState by remember { mutableStateOf(GameState()) }
     var showHitMissDialog by remember { mutableStateOf(false) }
     var hitMissMessage by remember { mutableStateOf("") }
@@ -54,16 +54,16 @@ fun SinglePlayerGameScreen(
     // Computer places ships at the start
     LaunchedEffect(Unit) {
         // Only place computer ships once at the beginning
-        if (gameState.player2.ships.isEmpty()) {
+        if (gameState.player2Ships.isEmpty()) {
             gameState = gameState.copy(
-                player2 = placeComputerShips(gameState.player2)
+                player2Ships = gameLogic.placeComputerShips()
             )
         }
     }
 
     // Computer's turn logic
     LaunchedEffect(isComputerTurn) {
-        if (isComputerTurn && gameState.phase == GamePhase.BATTLE) {
+        if (isComputerTurn && gameState.phase == 1) {
             // Add a short delay to make it seem like the computer is "thinking"
             computerThinking = true
             delay(800L)
@@ -75,18 +75,18 @@ fun SinglePlayerGameScreen(
                 adjacentTargets.first()
             } else {
                 // Random targeting mode
-                getRandomUnattackedCoordinate(gameState.player2.hits, gameState.player2.misses)
+                gameLogic.getRandomUnattackedCoordinate(gameState.player2Hits, gameState.player2Misses)
             }
 
             // Execute the attack
-            handleAttack(
+            gameLogic.handleAttack(
                 attackCoordinate.first,
                 attackCoordinate.second,
                 gameState.copy(isPlayer1Turn = false), // Computer is player 2
-                createBoardWithShips(
-                    gameState.player1.ships,
-                    gameState.player2.hits,
-                    gameState.player2.misses
+                gameLogic.createBoardWithShips(
+                    gameState.player1Ships,
+                    gameState.player2Hits,
+                    gameState.player2Misses
                 )
             ) { newState, newBoard, isHit ->
                 gameState = newState
@@ -99,12 +99,12 @@ fun SinglePlayerGameScreen(
                     // Generate adjacent targets if this is the first hit or we've exhausted previous targets
                     if (adjacentTargets.isEmpty() || adjacentTargets.size == 1) {
                         // Create new adjacent targets list
-                        val newTargets = getAdjacentCoordinates(attackCoordinate)
+                        val newTargets = gameLogic.getAdjacentCoordinates(attackCoordinate)
                             .filter { (x, y) ->
                                 // Filter valid coordinates that haven't been attacked
                                 x in 0..9 && y in 0..9 &&
-                                        Pair(x, y) !in gameState.player2.hits &&
-                                        Pair(x, y) !in gameState.player2.misses
+                                        Pair(x, y) !in gameState.player2Hits &&
+                                        Pair(x, y) !in gameState.player2Misses
                             }
                         adjacentTargets = newTargets
                     } else {
@@ -131,10 +131,10 @@ fun SinglePlayerGameScreen(
                 isComputerTurn = false
 
                 // Update the board view to show player's board with computer's attacks
-                gameBoard = createBoardWithShips(
-                    gameState.player1.ships,
-                    gameState.player2.hits,
-                    gameState.player2.misses
+                gameBoard = gameLogic.createBoardWithShips(
+                    gameState.player1Ships,
+                    gameState.player2Hits,
+                    gameState.player2Misses
                 )
             }
         }
@@ -142,19 +142,19 @@ fun SinglePlayerGameScreen(
 
     // Handle game phase transitions
     LaunchedEffect(gameState.phase, gameState.isPlayer1Turn) {
-        if (gameState.phase == GamePhase.PLACEMENT && gameState.player1.ships.size == 2 && !isComputerTurn) {
+        if (gameState.phase == 0 && gameState.player1Ships.size == 2 && !isComputerTurn) {
             // Player finished placing ships, transition to battle phase
             gameState = gameState.copy(
-                phase = GamePhase.BATTLE,
+                phase = 1,
                 isPlayer1Turn = true,
-                boardView = BoardView.OPPONENT_BOARD
+                boardView = 1
             )
 
             showTurnNotification = true
             turnMessage = "Ships placed! Your turn to attack."
 
             // Set up attack board (showing computer's board to attack)
-            gameBoard = createBoardForAttacking(gameState)
+            gameBoard = gameLogic.createBoardForAttacking(gameState)
         }
     }
 
@@ -168,19 +168,19 @@ fun SinglePlayerGameScreen(
             // Game header
             Text(
                 text = when (gameState.phase) {
-                    GamePhase.PLACEMENT -> "Place Your Ships (${gameState.player1.ships.size}/2)"
-                    GamePhase.BATTLE -> if (computerThinking)
+                    0 -> "Place Your Ships (${gameState.player1Ships.size}/2)"
+                    1 -> if (computerThinking)
                         "Computer is thinking..."
                     else
                         "Your Turn to Attack"
-                    GamePhase.GAME_OVER -> if (gameState.isPlayer1Turn) "You Win!" else "Computer Wins!"
+                    else -> if (gameState.isPlayer1Turn) "You Win!" else "Computer Wins!"
                 },
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
             // Ship placement controls
-            if (gameState.phase == GamePhase.PLACEMENT) {
+            if (gameState.phase == 0) {
                 Button(
                     onClick = {
                         gameState = gameState.copy(isHorizontal = !gameState.isHorizontal)
@@ -223,9 +223,9 @@ fun SinglePlayerGameScreen(
             }
 
             // Board Title
-            if (gameState.phase == GamePhase.BATTLE) {
+            if (gameState.phase == 1) {
                 Text(
-                    text = if (gameState.boardView == BoardView.OPPONENT_BOARD)
+                    text = if (gameState.boardView == 1)
                         "Computer's Waters (Click to Attack!)"
                     else
                         "Your Waters (Computer's attacks shown)",
@@ -238,18 +238,18 @@ fun SinglePlayerGameScreen(
             BattleshipGrid(
                 board = gameBoard,
                 enabled = when (gameState.phase) {
-                    GamePhase.PLACEMENT -> true
-                    GamePhase.BATTLE -> gameState.isPlayer1Turn && !isComputerTurn && !computerThinking
-                    GamePhase.GAME_OVER -> false
+                    0 -> true
+                    1 -> gameState.isPlayer1Turn && !isComputerTurn && !computerThinking
+                    else -> false
                 },
                 onCellClick = { x, y ->
                     when (gameState.phase) {
-                        GamePhase.PLACEMENT -> handlePlacement(x, y, gameState, gameBoard) { newState, newBoard ->
+                        0 -> gameLogic.handlePlacement(x, y, gameState, gameBoard) { newState, newBoard ->
                             gameState = newState
                             gameBoard = newBoard
                         }
-                        GamePhase.BATTLE -> {
-                            handleAttack(x, y, gameState, gameBoard) { newState, newBoard, isHit ->
+                        1 -> {
+                            gameLogic.handleAttack(x, y, gameState, gameBoard) { newState, newBoard, isHit ->
                                 // Display hit/miss notification
                                 hitMissMessage = if (isHit) "Hit! You found an enemy ship!" else "Miss! No ship at this location."
                                 showHitMissDialog = true
@@ -258,7 +258,7 @@ fun SinglePlayerGameScreen(
                                 gameBoard = newBoard
 
                                 // Check for game over
-                                if (newState.phase == GamePhase.GAME_OVER) {
+                                if (newState.phase == 2) {
                                     hitMissMessage = "Game Over! You Win!"
                                 } else {
                                     // Set up for computer's turn
@@ -266,55 +266,55 @@ fun SinglePlayerGameScreen(
                                 }
                             }
                         }
-                        GamePhase.GAME_OVER -> { /* Do nothing */ }
+                        2 -> { /* Do nothing */ }
                     }
                 }
             )
 
             // Switch view button (your board/computer's board)
-            if (gameState.phase == GamePhase.BATTLE && !computerThinking) {
+            if (gameState.phase == 1 && !computerThinking) {
                 Button(
                     onClick = {
-                        val newView = if (gameState.boardView == BoardView.OPPONENT_BOARD) {
+                        val newView = if (gameState.boardView == 1) {
                             // Switch to player's board view
-                            BoardView.OWN_BOARD
+                            0
                         } else {
                             // Switch to opponent's board view
-                            BoardView.OPPONENT_BOARD
+                            1
                         }
 
                         gameState = gameState.copy(boardView = newView)
 
                         // Update board based on view
-                        gameBoard = if (newView == BoardView.OWN_BOARD) {
-                            createBoardWithShips(
-                                gameState.player1.ships,
-                                gameState.player2.hits,
-                                gameState.player2.misses
+                        gameBoard = if (newView == 0) {
+                            gameLogic.createBoardWithShips(
+                                gameState.player1Ships,
+                                gameState.player2Hits,
+                                gameState.player2Misses
                             )
                         } else {
-                            createBoardForAttacking(gameState)
+                            gameLogic.createBoardForAttacking(gameState)
                         }
                     },
                     modifier = Modifier.padding(top = 16.dp)
                 ) {
-                    Text(if (gameState.boardView == BoardView.OPPONENT_BOARD) "View Your Board" else "View Computer's Board")
+                    Text(if (gameState.boardView == 1) "View Your Board" else "View Computer's Board")
                 }
             }
 
-            if (gameState.phase == GamePhase.GAME_OVER) {
+            if (gameState.phase == 2) {
                 Button(
                     onClick = {
                         // Reset game
                         gameState = GameState()
-                        gameBoard = createInitialBoard()
+                        gameBoard = gameLogic.createInitialBoard()
                         computerLastHit = null
                         adjacentTargets = emptyList()
                         isComputerTurn = false
 
                         // Place computer ships for new game
                         gameState = gameState.copy(
-                            player2 = placeComputerShips(gameState.player2)
+                            player2Ships = gameLogic.placeComputerShips()
                         )
                     },
                     modifier = Modifier.padding(top = 16.dp)
@@ -346,51 +346,3 @@ fun SinglePlayerGameScreen(
     }
 }
 
-// Get a list of adjacent coordinates (up, down, left, right)
-private fun getAdjacentCoordinates(coordinate: Pair<Int, Int>): List<Pair<Int, Int>> {
-    val (x, y) = coordinate
-    return listOf(
-        Pair(x - 1, y), // Left
-        Pair(x + 1, y), // Right
-        Pair(x, y - 1), // Up
-        Pair(x, y + 1)  // Down
-    )
-}
-
-// Get a random unattacked coordinate for computer targeting
-private fun getRandomUnattackedCoordinate(hits: List<Pair<Int, Int>>, misses: List<Pair<Int, Int>>): Pair<Int, Int> {
-    val attackedCoordinates = hits + misses
-    var randomCoordinate: Pair<Int, Int>
-
-    do {
-        val x = Random.nextInt(0, 10)
-        val y = Random.nextInt(0, 10)
-        randomCoordinate = Pair(x, y)
-    } while (randomCoordinate in attackedCoordinates)
-
-    return randomCoordinate
-}
-
-// Place computer ships randomly
-private fun placeComputerShips(player: Player): Player {
-    val newShips = mutableListOf<List<Pair<Int, Int>>>()
-
-    while (newShips.size < 2) { // Place 2 ships
-        val isHorizontal = Random.nextBoolean()
-        val maxX = if (isHorizontal) 7 else 9 // Leave room for ship length
-        val maxY = if (isHorizontal) 9 else 7
-
-        val startX = Random.nextInt(0, maxX + 1)
-        val startY = Random.nextInt(0, maxY + 1)
-
-        val shipPositions = calculateShipPositions(startX, startY, isHorizontal)
-
-        // Check for overlaps with existing ships
-        val existingPositions = newShips.flatten()
-        if (shipPositions.none { it in existingPositions }) {
-            newShips.add(shipPositions)
-        }
-    }
-
-    return player.copy(ships = newShips)
-}

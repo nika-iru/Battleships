@@ -45,15 +45,18 @@ import com.fuentes.battleships.modules.auth.ui.AuthViewModel
 import com.fuentes.battleships.modules.game.singleplayer.data.Cell
 import com.fuentes.battleships.modules.game.singleplayer.data.GamePhase
 import com.fuentes.battleships.modules.game.singleplayer.data.BoardView
+import com.fuentes.battleships.modules.game.singleplayer.data.GameLogic
 import com.fuentes.battleships.modules.game.singleplayer.data.GameState
 import kotlinx.coroutines.delay
+
 @Composable
 fun GameScreen(
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel,
     navController: NavController
 ) {
-    var gameBoard by remember { mutableStateOf(createInitialBoard()) }
+    val gameLogic = GameLogic()
+    var gameBoard by remember { mutableStateOf(gameLogic.createInitialBoard()) }
     var gameState by remember { mutableStateOf(GameState()) }
     var showHitMissDialog by remember { mutableStateOf(false) }
     var hitMissMessage by remember { mutableStateOf("") }
@@ -79,18 +82,23 @@ fun GameScreen(
 
     // Modified LaunchedEffect to automatically set attack mode when turn starts
     LaunchedEffect(gameState.isPlayer1Turn, gameState.phase) {
-        if (gameState.phase == GamePhase.PLACEMENT && gameState.player1.ships.size == 2 && !showTurnNotification) {
-            // Show simple turn notification for Player 2
-            showTurnNotification = true
-            turnMessage = "Player 2's turn to place ships"
+        if (gameState.phase == 0) {
+            val player1ShipsCount = gameState.player1Ships.size
+            val player2ShipsCount = gameState.player2Ships.size
 
-            // After showing notification, initialize Player 2's board as empty
-            gameBoard = createInitialBoard()
-        } else if (gameState.phase == GamePhase.BATTLE) {
+            if (player1ShipsCount == 2 && !showTurnNotification) {
+                // Show simple turn notification for Player 2
+                showTurnNotification = true
+                turnMessage = "Player 2's turn to place ships"
+
+                // After showing notification, initialize Player 2's board as empty
+                gameBoard = gameLogic.createInitialBoard()
+            }
+        } else if (gameState.phase == 1) {
             // Automatically set to attack mode when a player's turn begins
             if (!showTurnNotification && !showHitMissDialog) {
-                gameState = gameState.copy(boardView = BoardView.OPPONENT_BOARD)
-                gameBoard = createBoardForAttacking(gameState)
+                gameState = gameState.copy(boardView = 1)
+                gameBoard = gameLogic.createBoardForAttacking(gameState)
                 isTimerRunning = true // Start the timer automatically
             }
         }
@@ -106,20 +114,24 @@ fun GameScreen(
             // Game header - removed username references
             Text(
                 text = when (gameState.phase) {
-                    GamePhase.PLACEMENT -> {
-                        "Player ${if (gameState.isPlayer1Turn) 1 else 2} Place Your Ship (${if (gameState.isPlayer1Turn) gameState.player1.ships.size else gameState.player2.ships.size}/2)"
+                    0 -> {
+                        val playerShipsCount = if (gameState.isPlayer1Turn)
+                            gameState.player1Ships.size
+                        else
+                            gameState.player2Ships.size
+                        "Player ${if (gameState.isPlayer1Turn) 1 else 2} Place Your Ship (${playerShipsCount}/2)"
                     }
-                    GamePhase.BATTLE -> {
+                    1 -> {
                         "Player ${if (gameState.isPlayer1Turn) 1 else 2}'s Attack Turn - Time Left: $timer seconds"
                     }
-                    GamePhase.GAME_OVER -> "Game Over! Player ${if (gameState.isPlayer1Turn) 1 else 2} Wins!"
+                    else -> "Game Over! Player ${if (gameState.isPlayer1Turn) 1 else 2} Wins!"
                 },
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
             // Ship placement controls
-            if (gameState.phase == GamePhase.PLACEMENT) {
+            if (gameState.phase == 0) {
                 Button(
                     onClick = {
                         gameState = gameState.copy(isHorizontal = !gameState.isHorizontal)
@@ -171,7 +183,7 @@ fun GameScreen(
             }
 
             // Board Title
-            if (gameState.phase == GamePhase.BATTLE) {
+            if (gameState.phase == 1) {
                 Text(
                     text = "Enemy Waters (Click to Attack!)",
                     style = MaterialTheme.typography.titleMedium,
@@ -183,18 +195,18 @@ fun GameScreen(
             BattleshipGrid(
                 board = gameBoard,
                 enabled = when (gameState.phase) {
-                    GamePhase.PLACEMENT -> true
-                    GamePhase.BATTLE -> true  // Always enabled during battle phase since we're always in attack mode
-                    GamePhase.GAME_OVER -> false
+                    0 -> true
+                    1 -> true  // Always enabled during battle phase since we're always in attack mode
+                    else -> false
                 },
                 onCellClick = { x, y ->
                     when (gameState.phase) {
-                        GamePhase.PLACEMENT -> handlePlacement(x, y, gameState, gameBoard) { newState, newBoard ->
+                        0 -> gameLogic.handlePlacement(x, y, gameState, gameBoard) { newState, newBoard ->
                             gameState = newState
                             gameBoard = newBoard
                         }
-                        GamePhase.BATTLE -> {
-                            handleAttack(x, y, gameState, gameBoard) { newState, newBoard, isHit ->
+                        1 -> {
+                            gameLogic.handleAttack(x, y, gameState, gameBoard) { newState, newBoard, isHit ->
 
                                 // Display hit/miss notification
                                 hitMissMessage = if (isHit) "Hit! You found an enemy ship!" else "Miss! No ship at this location."
@@ -204,7 +216,7 @@ fun GameScreen(
                                 gameBoard = newBoard
 
                                 // Check for game over
-                                if (newState.phase == GamePhase.GAME_OVER) {
+                                if (newState.phase == 2) {
                                     hitMissMessage = "Game Over! Player ${if (gameState.isPlayer1Turn) 1 else 2} Wins!"
                                 }
 
@@ -213,16 +225,16 @@ fun GameScreen(
                                 timer = 15
                             }
                         }
-                        GamePhase.GAME_OVER -> { /* Do nothing */ }
+                        2 -> { /* Do nothing */ }
                     }
                 }
             )
 
-            if (gameState.phase == GamePhase.GAME_OVER) {
+            if (gameState.phase == 2) {
                 Button(
                     onClick = {
                         gameState = GameState()
-                        gameBoard = createInitialBoard()
+                        gameBoard = gameLogic.createInitialBoard()
                         timer = 15 // Reset timer
                         isTimerRunning = false
                     },
@@ -242,9 +254,9 @@ fun GameScreen(
                 showTurnNotification = false
 
                 // When a notification is dismissed, automatically set to attack mode for battle phase
-                if (gameState.phase == GamePhase.BATTLE) {
-                    gameState = gameState.copy(boardView = BoardView.OPPONENT_BOARD)
-                    gameBoard = createBoardForAttacking(gameState)
+                if (gameState.phase == 2) {
+                    gameState = gameState.copy(boardView = 1)
+                    gameBoard = gameLogic.createBoardForAttacking(gameState)
                     isTimerRunning = true // Start the timer
                 }
             }
@@ -259,7 +271,7 @@ fun GameScreen(
                 showHitMissDialog = false
 
                 // If game is over, don't switch players
-                if (gameState.phase != GamePhase.GAME_OVER) {
+                if (gameState.phase != 2) {
                     // Show turn notification after hit/miss message
                     showTurnNotification = true
                     turnMessage = "Player ${if (!gameState.isPlayer1Turn) 1 else 2}'s turn"
@@ -479,173 +491,11 @@ fun BattleshipCell(
     }
 }
 
-fun handlePlacement(
-    x: Int,
-    y: Int,
-    gameState: GameState,
-    board: List<Cell>,
-    onUpdate: (GameState, List<Cell>) -> Unit
-) {
-    val currentPlayer = if (gameState.isPlayer1Turn) gameState.player1 else gameState.player2
 
-    if (currentPlayer.ships.size < 2) {
-        val shipPositions = calculateShipPositions(x, y, gameState.isHorizontal)
 
-        // Check if ship would be out of bounds
-        if (shipPositions.all { (posX, posY) -> posX in 0..9 && posY in 0..9 }) {
-            // Check if ship overlaps with existing ships
-            val existingShipPositions = currentPlayer.ships.flatten()
-            if (shipPositions.none { it in existingShipPositions }) {
-                val newShips = currentPlayer.ships + listOf(shipPositions)
-                val newPlayer = currentPlayer.copy(ships = newShips)
 
-                // Update board to show ship
-                val newBoard = board.map { cell ->
-                    if (shipPositions.any { (shipX, shipY) -> shipX == cell.x && shipY == cell.y }) {
-                        cell.copy(isShip = true)
-                    } else cell
-                }
 
-                var newState = if (gameState.isPlayer1Turn) {
-                    gameState.copy(player1 = newPlayer)
-                } else {
-                    gameState.copy(player2 = newPlayer)
-                }
 
-                // Switch turns or phases
-                if (newPlayer.ships.size == 2) {
-                    if (!gameState.isPlayer1Turn) {
-                        // Both players have placed their ships
-                        newState = newState.copy(
-                            phase = GamePhase.BATTLE,
-                            isPlayer1Turn = true,
-                            boardView = BoardView.OWN_BOARD
-                        )
-                    } else {
-                        // Switch to player 2's placement
-                        newState = newState.copy(isPlayer1Turn = false)
-                    }
-                }
-                onUpdate(newState, newBoard)
-            }
-        }
-    }
-}
-
-fun handleAttack(
-    x: Int,
-    y: Int,
-    gameState: GameState,
-    board: List<Cell>,
-    onUpdate: (GameState, List<Cell>, Boolean) -> Unit
-) {
-    val attackedPlayer = if (gameState.isPlayer1Turn) gameState.player2 else gameState.player1
-    val attackingPlayer = if (gameState.isPlayer1Turn) gameState.player1 else gameState.player2
-    val coordinate = Pair(x, y)
-
-    // Check if cell was already attacked
-    if (coordinate !in attackingPlayer.hits && coordinate !in attackingPlayer.misses) {
-        // Check if hit by looking through all ships
-        val isHit = attackedPlayer.ships.any { ship -> coordinate in ship }
-
-        val newAttackingPlayer = attackingPlayer.copy(
-            hits = if (isHit) attackingPlayer.hits + coordinate else attackingPlayer.hits,
-            misses = if (!isHit) attackingPlayer.misses + coordinate else attackingPlayer.misses
-        )
-
-        // Update board and state
-        val newBoard = board.map { cell ->
-            if (cell.x == x && cell.y == y) {
-                cell.copy(
-                    isHit = isHit,
-                    isMiss = !isHit,
-                    // Show ship if it was hit
-                    isShip = isHit && attackedPlayer.ships.any { ship ->
-                        ship.any { (shipX, shipY) -> shipX == cell.x && shipY == cell.y }
-                    }
-                )
-            } else cell
-        }
-
-        var newState = if (gameState.isPlayer1Turn) {
-            gameState.copy(player1 = newAttackingPlayer)
-        } else {
-            gameState.copy(player2 = newAttackingPlayer)
-        }
-
-        // Count hits to check for win condition
-        // Each player has 2 ships × 3 cells = 6 cells total
-        val totalShipCells = 6
-
-        // Check for game over
-        newState = if (newAttackingPlayer.hits.size == totalShipCells) {
-            newState.copy(phase = GamePhase.GAME_OVER)
-        } else {
-            // Switch turns
-            newState.copy(isPlayer1Turn = !newState.isPlayer1Turn, boardView = BoardView.OWN_BOARD)
-        }
-
-        onUpdate(newState, newBoard, isHit)
-    }
-}
-
-fun createBoardWithShips(
-    ships: List<List<Pair<Int, Int>>>,
-    opponentHits: List<Pair<Int, Int>>,
-    opponentMisses: List<Pair<Int, Int>>
-): List<Cell> {
-    return createInitialBoard().map { cell ->
-        val coordinate = Pair(cell.x, cell.y)
-        val isShip = ships.any { ship ->
-            ship.any { (shipX, shipY) -> shipX == cell.x && shipY == cell.y }
-        }
-        val isHit = isShip && coordinate in opponentHits
-        val isMiss = coordinate in opponentMisses
-
-        cell.copy(
-            isShip = isShip,
-            isHit = isHit,
-            isMiss = isMiss
-        )
-    }
-}
-
-fun createBoardForAttacking(gameState: GameState): List<Cell> {
-    val attackedPlayer = if (gameState.isPlayer1Turn) gameState.player2 else gameState.player1
-    val attackingPlayer = if (gameState.isPlayer1Turn) gameState.player1 else gameState.player2
-
-    return createInitialBoard().map { cell ->
-        val coordinate = Pair(cell.x, cell.y)
-        val isHit = coordinate in attackingPlayer.hits
-        val isMiss = coordinate in attackingPlayer.misses
-
-        // Only mark as ship if it was hit
-        val isShip = isHit && attackedPlayer.ships.any { ship -> coordinate in ship }
-
-        cell.copy(
-            // Never show enemy ships unless they were hit
-            isShip = isShip,
-            isHit = isHit,
-            isMiss = isMiss
-        )
-    }
-}
-
-fun calculateShipPositions(startX: Int, startY: Int, isHorizontal: Boolean): List<Pair<Int, Int>> {
-    return if (isHorizontal) {
-        listOf(
-            Pair(startX, startY),
-            Pair(startX + 1, startY),
-            Pair(startX + 2, startY)
-        )
-    } else {
-        listOf(
-            Pair(startX, startY),
-            Pair(startX, startY + 1),
-            Pair(startX, startY + 2)
-        )
-    }
-}
 
 @Composable
 fun BattleshipGrid(
@@ -719,12 +569,3 @@ fun BattleshipGrid(
     }
 }
 
-fun createInitialBoard(): List<Cell> {
-    val board = mutableListOf<Cell>()
-    for (y in 0..9) {
-        for (x in 0..9) {
-            board.add(Cell(x, y))
-        }
-    }
-    return board
-}
