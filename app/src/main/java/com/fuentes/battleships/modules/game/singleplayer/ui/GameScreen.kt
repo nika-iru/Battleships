@@ -1,4 +1,4 @@
-package com.fuentes.battleships.modules.game.ui
+package com.fuentes.battleships.modules.game.singleplayer.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -42,9 +42,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.fuentes.battleships.modules.auth.ui.AuthViewModel
-import com.fuentes.battleships.modules.game.data.models.Cell
-import com.fuentes.battleships.modules.game.data.models.GamePhase
-import com.fuentes.battleships.modules.game.data.models.BoardView
+import com.fuentes.battleships.modules.game.singleplayer.data.Cell
+import com.fuentes.battleships.modules.game.singleplayer.data.GamePhase
+import com.fuentes.battleships.modules.game.singleplayer.data.BoardView
+import com.fuentes.battleships.modules.game.singleplayer.data.GameState
 import kotlinx.coroutines.delay
 @Composable
 fun GameScreen(
@@ -194,8 +195,6 @@ fun GameScreen(
                         }
                         GamePhase.BATTLE -> {
                             handleAttack(x, y, gameState, gameBoard) { newState, newBoard, isHit ->
-                                val attackedPlayer = if (gameState.isPlayer1Turn) gameState.player2 else gameState.player1
-                                val attackingPlayer = if (gameState.isPlayer1Turn) gameState.player1 else gameState.player2
 
                                 // Display hit/miss notification
                                 hitMissMessage = if (isHit) "Hit! You found an enemy ship!" else "Miss! No ship at this location."

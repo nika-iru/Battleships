@@ -1,4 +1,4 @@
-package com.fuentes.battleships.modules.game.data.models
+package com.fuentes.battleships.modules.game.singleplayer.data
 
 data class Cell(
     val x: Int,

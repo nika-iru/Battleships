@@ -15,10 +15,10 @@ import androidx.navigation.compose.rememberNavController
 import com.fuentes.battleships.ui.theme.BattleshipsTheme
 import com.fuentes.battleships.modules.auth.ui.AuthViewModel
 import com.fuentes.battleships.modules.auth.ui.LoginScreen
-import com.fuentes.battleships.modules.game.ui.GameScreen
+import com.fuentes.battleships.modules.game.singleplayer.ui.GameScreen
 import com.fuentes.battleships.modules.auth.ui.RegistrationScreen
 import com.fuentes.battleships.modules.auth.ui.HomeScreen
-import com.fuentes.battleships.modules.game.ui.SinglePlayerGameScreen
+import com.fuentes.battleships.modules.game.singleplayer.ui.SinglePlayerGameScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

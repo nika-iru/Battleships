@@ -1,4 +1,7 @@
-package com.fuentes.battleships.modules.game.data.models
+package com.fuentes.battleships.modules.game.multiplayer.data
+
+import com.fuentes.battleships.modules.game.singleplayer.data.BoardView
+import com.fuentes.battleships.modules.game.singleplayer.data.GamePhase
 
 data class GameSession(
     val id: String? = null,
@@ -14,7 +17,8 @@ data class GameSession(
     val phase: GamePhase = GamePhase.PLACEMENT,
     val isHorizontal: Boolean = true,
     val boardView: BoardView = BoardView.OWN_BOARD,
-    val timer: Int = 15
+    val timer: Int = 15,
+    val winnerId: String? = null
 ) {
     fun toMap(): Map<String, Any?> {
         return mapOf(

@@ -1,9 +1,4 @@
-package com.fuentes.battleships.modules.game.ui
-
-import com.fuentes.battleships.modules.game.data.models.BoardView
-import com.fuentes.battleships.modules.game.data.models.Cell
-import com.fuentes.battleships.modules.game.data.models.GamePhase
-import com.fuentes.battleships.modules.game.data.models.GameSession
+package com.fuentes.battleships.modules.game.singleplayer.data
 
 data class GameState(
     val player1: Player = Player(), // Firebase Auth User ID

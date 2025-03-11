@@ -1,4 +1,4 @@
-package com.fuentes.battleships.modules.game.ui
+package com.fuentes.battleships.modules.game.singleplayer.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -22,15 +22,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.fuentes.battleships.modules.auth.ui.AuthViewModel
-import com.fuentes.battleships.modules.game.data.models.BoardView
-import com.fuentes.battleships.modules.game.data.models.Cell
-import com.fuentes.battleships.modules.game.data.models.GamePhase
+import com.fuentes.battleships.modules.game.singleplayer.data.BoardView
+import com.fuentes.battleships.modules.game.singleplayer.data.GamePhase
+import com.fuentes.battleships.modules.game.singleplayer.data.GameState
+import com.fuentes.battleships.modules.game.singleplayer.data.Player
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
