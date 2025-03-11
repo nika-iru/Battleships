@@ -57,7 +57,8 @@ fun OpponentScreen(
 ) {
     val gameLogic = GameLogic()
     var gameBoard by remember { mutableStateOf(gameLogic.createInitialBoard()) }
-    var gameState by remember { mutableStateOf(GameState()) }
+    // Initialize with player 2's turn as false (Player 1 starts)
+    var gameState by remember { mutableStateOf(GameState(isPlayer1Turn = true)) }
     var showHitMissDialog by remember { mutableStateOf(false) }
     var hitMissMessage by remember { mutableStateOf("") }
     var showTurnNotification by remember { mutableStateOf(false) }
@@ -86,17 +87,15 @@ fun OpponentScreen(
             val player1ShipsCount = gameState.player1Ships.size
             val player2ShipsCount = gameState.player2Ships.size
 
-            if (player1ShipsCount == 2 && !showTurnNotification) {
-                // Show simple turn notification for Player 2
+            // Show turn notification for Player 2 when it's player 2's turn to place ships
+            if (player1ShipsCount == 2 && !gameState.isPlayer1Turn && !showTurnNotification) {
                 showTurnNotification = true
                 turnMessage = "Player 2's turn to place ships"
-
-                // After showing notification, initialize Player 2's board as empty
                 gameBoard = gameLogic.createInitialBoard()
             }
         } else if (gameState.phase == 1) {
-            // Automatically set to attack mode when a player's turn begins
-            if (!showTurnNotification && !showHitMissDialog) {
+            // Automatically set to attack mode when it's Player 2's turn
+            if (!gameState.isPlayer1Turn && !showTurnNotification && !showHitMissDialog) {
                 gameState = gameState.copy(boardView = 1)
                 gameBoard = gameLogic.createBoardForAttacking(gameState)
                 isTimerRunning = true // Start the timer automatically
@@ -111,27 +110,34 @@ fun OpponentScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(16.dp)
         ) {
-            // Game header - removed username references
+            // Game header - clearly identifies Player 2
             Text(
                 text = when (gameState.phase) {
                     0 -> {
-                        val playerShipsCount = if (gameState.isPlayer1Turn)
-                            gameState.player1Ships.size
-                        else
-                            gameState.player2Ships.size
-                        "Player ${if (gameState.isPlayer1Turn) 1 else 2} Place Your Ship (${playerShipsCount}/2)"
+                        if (!gameState.isPlayer1Turn) {
+                            "Player 2 Place Your Ship (${gameState.player2Ships.size}/2)"
+                        } else {
+                            "Waiting for Player 1 to place ships..."
+                        }
                     }
                     1 -> {
-                        "Player ${if (gameState.isPlayer1Turn) 1 else 2}'s Attack Turn - Time Left: $timer seconds"
+                        if (!gameState.isPlayer1Turn) {
+                            "Player 2's Attack Turn - Time Left: $timer seconds"
+                        } else {
+                            "Waiting for Player 1's turn..."
+                        }
                     }
-                    else -> "Game Over! Player ${if (gameState.isPlayer1Turn) 1 else 2} Wins!"
+                    else -> {
+                        val winner = if (gameState.player2Ships.isEmpty()) "Player 1" else "Player 2"
+                        "Game Over! $winner Wins!"
+                    }
                 },
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            // Ship placement controls
-            if (gameState.phase == 0) {
+            // Ship placement controls - only show when it's Player 2's turn
+            if (gameState.phase == 0 && !gameState.isPlayer1Turn) {
                 Button(
                     onClick = {
                         gameState = gameState.copy(isHorizontal = !gameState.isHorizontal)
@@ -141,8 +147,6 @@ fun OpponentScreen(
                     Text(if (gameState.isHorizontal) "Horizontal Placement" else "Vertical Placement")
                 }
             }
-
-            // Removed "Attack Enemy" button since we auto-transition to attack mode
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -182,8 +186,8 @@ fun OpponentScreen(
                 }
             }
 
-            // Board Title
-            if (gameState.phase == 1) {
+            // Board Title - only show when in battle phase and Player 2's turn
+            if (gameState.phase == 1 && !gameState.isPlayer1Turn) {
                 Text(
                     text = "Enemy Waters (Click to Attack!)",
                     style = MaterialTheme.typography.titleMedium,
@@ -191,39 +195,44 @@ fun OpponentScreen(
                 )
             }
 
-            // Game Board
+            // Game Board with blocking overlay for Player 1's turn
             Box {
                 BattleshipGrid(
                     board = gameBoard,
                     enabled = when (gameState.phase) {
-                        0 -> true
-                        1 -> true  // Always enabled during battle phase since we're always in attack mode
+                        0 -> !gameState.isPlayer1Turn // Only enabled during Player 2's placement phase
+                        1 -> !gameState.isPlayer1Turn // Only enabled during Player 2's attack phase
                         else -> false
                     },
                     onCellClick = { x, y ->
                         when (gameState.phase) {
-                            0 -> gameLogic.handlePlacement(x, y, gameState, gameBoard) { newState, newBoard ->
-                                gameState = newState
-                                gameBoard = newBoard
+                            0 -> {
+                                if (!gameState.isPlayer1Turn) {
+                                    gameLogic.handlePlacement(x, y, gameState, gameBoard) { newState, newBoard ->
+                                        gameState = newState
+                                        gameBoard = newBoard
+                                    }
+                                }
                             }
                             1 -> {
-                                gameLogic.handleAttack(x, y, gameState, gameBoard) { newState, newBoard, isHit ->
+                                if (!gameState.isPlayer1Turn) {
+                                    gameLogic.handleAttack(x, y, gameState, gameBoard) { newState, newBoard, isHit ->
+                                        // Display hit/miss notification
+                                        hitMissMessage = if (isHit) "Hit! You found an enemy ship!" else "Miss! No ship at this location."
+                                        showHitMissDialog = true
 
-                                    // Display hit/miss notification
-                                    hitMissMessage = if (isHit) "Hit! You found an enemy ship!" else "Miss! No ship at this location."
-                                    showHitMissDialog = true
+                                        gameState = newState
+                                        gameBoard = newBoard
 
-                                    gameState = newState
-                                    gameBoard = newBoard
+                                        // Check for game over
+                                        if (newState.phase == 2) {
+                                            hitMissMessage = "Game Over! Player 2 Wins!"
+                                        }
 
-                                    // Check for game over
-                                    if (newState.phase == 2) {
-                                        hitMissMessage = "Game Over! Player ${if (gameState.isPlayer1Turn) 1 else 2} Wins!"
+                                        // Reset timer after attack
+                                        isTimerRunning = false
+                                        timer = 15
                                     }
-
-                                    // Reset timer after attack
-                                    isTimerRunning = false
-                                    timer = 15
                                 }
                             }
                             2 -> { /* Do nothing */ }
@@ -231,8 +240,9 @@ fun OpponentScreen(
                     }
                 )
 
+                // Show blocking overlay when it's Player 1's turn
                 BlockingOverlay(
-                    isBlocking = gameState.phase == 1 && gameState.isPlayer1Turn,
+                    isBlocking = gameState.isPlayer1Turn,
                     message = "Waiting for Player 1's turn..."
                 )
             }
@@ -261,7 +271,7 @@ fun OpponentScreen(
                 showTurnNotification = false
 
                 // When a notification is dismissed, automatically set to attack mode for battle phase
-                if (gameState.phase == 2) {
+                if (gameState.phase == 1 && !gameState.isPlayer1Turn) {
                     gameState = gameState.copy(boardView = 1)
                     gameBoard = gameLogic.createBoardForAttacking(gameState)
                     isTimerRunning = true // Start the timer
@@ -287,5 +297,3 @@ fun OpponentScreen(
         )
     }
 }
-
-
