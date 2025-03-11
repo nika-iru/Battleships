@@ -1,5 +1,11 @@
-package com.fuentes.battleships.modules.game.singleplayer.data
+package com.fuentes.battleships.modules.game
 
+import android.util.Log
+import com.fuentes.battleships.modules.game.multiplayer.data.GameSession
+import com.fuentes.battleships.modules.game.singleplayer.data.Cell
+import com.fuentes.battleships.modules.game.singleplayer.data.GameState
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 import kotlin.random.Random
 
 class GameLogic {
@@ -38,6 +44,28 @@ class GameLogic {
         val attackedShips = if (gameState.isPlayer1Turn) gameState.player2Ships else gameState.player1Ships
         val attackingHits = if (gameState.isPlayer1Turn) gameState.player1Hits else gameState.player2Hits
         val attackingMisses = if (gameState.isPlayer1Turn) gameState.player1Misses else gameState.player2Misses
+
+        return createInitialBoard().map { cell ->
+            val coordinate = Pair(cell.x, cell.y)
+            val isHit = coordinate in attackingHits
+            val isMiss = coordinate in attackingMisses
+
+            // Only mark as ship if it was hit
+            val isShip = isHit && attackedShips.any { ship -> coordinate in ship }
+
+            cell.copy(
+                // Never show enemy ships unless they were hit
+                isShip = isShip,
+                isHit = isHit,
+                isMiss = isMiss
+            )
+        }
+    }
+
+    fun createBoardForAttackingMultiplayer(gameSession: GameSession): List<Cell> {
+        val attackedShips = if (gameSession.isPlayer1Turn) gameSession.player2Ships else gameSession.player1Ships
+        val attackingHits = if (gameSession.isPlayer1Turn) gameSession.player1Hits else gameSession.player2Hits
+        val attackingMisses = if (gameSession.isPlayer1Turn) gameSession.player1Misses else gameSession.player2Misses
 
         return createInitialBoard().map { cell ->
             val coordinate = Pair(cell.x, cell.y)
@@ -131,6 +159,39 @@ class GameLogic {
         }
     }
 
+    fun handleAttackMultiplayer(x: Int, y: Int, gameSession: GameSession, onUpdate: (GameSession) -> Unit) {
+        val attackedShips = if (gameSession.isPlayer1Turn) gameSession.player2Ships else gameSession.player1Ships
+        val attackingHits = if (gameSession.isPlayer1Turn) gameSession.player1Hits else gameSession.player2Hits
+        val attackingMisses = if (gameSession.isPlayer1Turn) gameSession.player1Misses else gameSession.player2Misses
+
+        val coordinate = Pair(x, y)
+
+        if (coordinate !in attackingHits && coordinate !in attackingMisses) {
+            val isHit = attackedShips.any { ship -> coordinate in ship }
+
+            val newAttackingHits = if (isHit) attackingHits + coordinate else attackingHits
+            val newAttackingMisses = if (!isHit) attackingMisses + coordinate else attackingMisses
+
+            val updatedSession = gameSession.copy(
+                player1Hits = if (gameSession.isPlayer1Turn) newAttackingHits else gameSession.player1Hits,
+                player2Hits = if (!gameSession.isPlayer1Turn) newAttackingHits else gameSession.player2Hits,
+                player1Misses = if (gameSession.isPlayer1Turn) newAttackingMisses else gameSession.player1Misses,
+                player2Misses = if (!gameSession.isPlayer1Turn) newAttackingMisses else gameSession.player2Misses,
+                isPlayer1Turn = !gameSession.isPlayer1Turn
+            )
+
+            // Update Firestore
+            Firebase.firestore.collection("sessions").document(gameSession.sessionId!!)
+                .update(updatedSession.toMap())
+                .addOnSuccessListener {
+                    onUpdate(updatedSession)
+                }
+                .addOnFailureListener { exception ->
+                    Log.e("GameScreen", "Failed to update game session", exception)
+                }
+        }
+    }
+
     fun handlePlacement(
         x: Int,
         y: Int,
@@ -178,6 +239,37 @@ class GameLogic {
                         }
                     }
                     onUpdate(newState, newBoard)
+                }
+            }
+        }
+    }
+
+    fun handlePlacementMultiplayer(x: Int, y: Int, gameSession: GameSession, onUpdate: (GameSession) -> Unit) {
+        val currentShips = if (gameSession.isPlayer1Turn) gameSession.player1Ships else gameSession.player2Ships
+
+        if (currentShips.size < 2) {
+            val shipPositions = calculateShipPositions(x, y, gameSession.isHorizontal)
+
+            if (shipPositions.all { (posX, posY) -> posX in 0..9 && posY in 0..9 }) {
+                val existingShipPositions = currentShips.flatten()
+                if (shipPositions.none { it in existingShipPositions }) {
+                    val newShips = currentShips + listOf(shipPositions)
+
+                    val updatedSession = if (gameSession.isPlayer1Turn) {
+                        gameSession.copy(player1Ships = newShips)
+                    } else {
+                        gameSession.copy(player2Ships = newShips)
+                    }
+
+                    // Update Firestore
+                    Firebase.firestore.collection("sessions").document(gameSession.sessionId!!)
+                        .update(updatedSession.toMap())
+                        .addOnSuccessListener {
+                            onUpdate(updatedSession)
+                        }
+                        .addOnFailureListener { exception ->
+                            Log.e("GameScreen", "Failed to update game session", exception)
+                        }
                 }
             }
         }

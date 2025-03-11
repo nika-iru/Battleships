@@ -1,3 +1,4 @@
+/*
 package com.fuentes.battleships.modules.game.multiplayer.ui
 
 import androidx.compose.foundation.background
@@ -45,7 +46,7 @@ import com.fuentes.battleships.modules.auth.ui.AuthViewModel
 import com.fuentes.battleships.modules.game.singleplayer.data.Cell
 import com.fuentes.battleships.modules.game.singleplayer.data.GamePhase
 import com.fuentes.battleships.modules.game.singleplayer.data.BoardView
-import com.fuentes.battleships.modules.game.singleplayer.data.GameLogic
+import com.fuentes.battleships.modules.game.GameLogic
 import com.fuentes.battleships.modules.game.singleplayer.data.GameState
 import kotlinx.coroutines.delay
 
@@ -235,7 +236,9 @@ fun OpponentScreen(
                                     }
                                 }
                             }
-                            2 -> { /* Do nothing */ }
+                            2 -> { */
+/* Do nothing *//*
+ }
                         }
                     }
                 )
@@ -296,4 +299,4 @@ fun OpponentScreen(
             }
         )
     }
-}
+}*/

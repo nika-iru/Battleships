@@ -42,10 +42,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.fuentes.battleships.modules.auth.ui.AuthViewModel
+import com.fuentes.battleships.modules.game.GameLogic
 import com.fuentes.battleships.modules.game.singleplayer.data.Cell
-import com.fuentes.battleships.modules.game.singleplayer.data.GamePhase
-import com.fuentes.battleships.modules.game.singleplayer.data.BoardView
-import com.fuentes.battleships.modules.game.singleplayer.data.GameLogic
 import com.fuentes.battleships.modules.game.singleplayer.data.GameState
 import kotlinx.coroutines.delay
 

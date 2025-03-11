@@ -1,8 +1,5 @@
 package com.fuentes.battleships.modules.game.multiplayer.data
 
-import com.fuentes.battleships.modules.game.singleplayer.data.BoardView
-import com.fuentes.battleships.modules.game.singleplayer.data.GamePhase
-
 data class GameSession(
     val sessionId: String? = null,
     val player1Id: String? = null, // Firebase Auth User ID
@@ -34,6 +31,7 @@ data class GameSession(
             "player1Misses" to player1Misses.map { listOf(it.first, it.second) },
             "player2Misses" to player2Misses.map { listOf(it.first, it.second) },
             "isPlayer1Turn" to isPlayer1Turn,
+            "isHorizontal" to isHorizontal,
             "phase" to phase,
             "timer" to timer
         )

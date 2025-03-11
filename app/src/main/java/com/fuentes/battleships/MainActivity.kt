@@ -21,8 +21,7 @@ import com.fuentes.battleships.modules.game.singleplayer.ui.GameScreen
 import com.fuentes.battleships.modules.auth.ui.RegistrationScreen
 import com.fuentes.battleships.modules.auth.ui.HomeScreen
 import com.fuentes.battleships.modules.game.multiplayer.data.GameViewModel
-import com.fuentes.battleships.modules.game.multiplayer.ui.HostScreen
-import com.fuentes.battleships.modules.game.multiplayer.ui.OpponentScreen
+import com.fuentes.battleships.modules.game.multiplayer.ui.MultiplayerScreen
 import com.fuentes.battleships.modules.game.multiplayer.ui.SessionScreen
 import com.fuentes.battleships.modules.game.singleplayer.ui.SinglePlayerGameScreen
 
@@ -76,41 +75,28 @@ class MainActivity : ComponentActivity() {
                                 gameViewModel = gameViewModel
                             )
                         }
+                        composable("game/{sessionId}", arguments = listOf(navArgument("sessionId") {
+                            type = NavType.StringType
+                        })) { backStackEntry ->
+                            val sessionId = backStackEntry.arguments?.getString("sessionId")
+                                ?: return@composable
+                            MultiplayerScreen(
+                                authViewModel = authViewModel,
+                                navController = navController,
+                                sessionId = sessionId
+                            )
+                        }
 
-                        composable(
+                        /*composable(
                             route = "game/{sessionId}",
                             arguments = listOf(navArgument("sessionId") {
                                 type = NavType.StringType
                             })
                         ) { backStackEntry ->
                             // Retrieve the sessionId from the navigation arguments
-                            val sessionId = backStackEntry.arguments?.getString("sessionId") ?: return@composable
-                            val currentUserId = authState.value.userId
-
-                            // Fetch the game session details from the GameViewModel
-                            LaunchedEffect(sessionId) {
-                                gameViewModel.updateGameSession(sessionId)
-                            }
-
-                            // Collect the game session state
-                            val gameSession by gameViewModel.gameSession.collectAsState()
-
-                            // Check if the current user is the creator (player1) of the session
+                            val sessionId = backStackEntry.arguments?.getString("sessionId") ?: return@composable session
                             val isCreator = gameSession.player1Id == currentUserId
-
-                            // Navigate to the appropriate screen based on whether the user is the creator
-                            if (isCreator) {
-                                HostScreen(
-                                    authViewModel = authViewModel,
-                                    navController = navController
-                                )
-                            } else {
-                                OpponentScreen(
-                                    authViewModel = authViewModel,
-                                    navController = navController
-                                )
-                            }
-                        }
+                        }*/
                     }
                 }
             }
