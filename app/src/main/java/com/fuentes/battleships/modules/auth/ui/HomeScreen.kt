@@ -32,7 +32,7 @@ fun HomeScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "Logged in as ${authViewModel.getCurrentUserEmail()}", style = MaterialTheme.typography.headlineMedium)
+        Text(text = "Logged in as ${authViewModel.getCurrentUserName()}", style = MaterialTheme.typography.headlineMedium)
 
         Spacer(modifier = Modifier.height(16.dp))
 

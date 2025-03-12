@@ -69,6 +69,7 @@ fun MultiplayerScreen(
     // Listen for Firestore updates
     LaunchedEffect(sessionId) {
             gameViewModel.initializeGame(sessionId)
+            Log.d("MultiplayerScreen", "Initializing game with sessionId: $sessionId")
     }
 
     // Observe changes to the game session
@@ -136,12 +137,14 @@ fun MultiplayerScreen(
                                 gameSession = updatedSession
                             }
                         }
+
                         1 -> {
                             // Handle attack
                             gameViewModel.handleAttack(x, y, gameSession) { updatedSession ->
                                 gameSession = updatedSession
                             }
                         }
+
                         2 -> {
                             // Game over, do nothing
                         }

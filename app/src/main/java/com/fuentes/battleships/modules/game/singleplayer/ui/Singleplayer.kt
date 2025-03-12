@@ -1,5 +1,6 @@
 package com.fuentes.battleships.modules.game.singleplayer.ui
 
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,8 +26,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.fuentes.battleships.modules.auth.ui.AuthViewModel
+import com.fuentes.battleships.modules.auth.ui.User
 import com.fuentes.battleships.modules.game.GameLogic
 import com.fuentes.battleships.modules.game.singleplayer.data.GameState
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
+import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.delay
 
 @Composable
@@ -49,6 +54,9 @@ fun SinglePlayerGameScreen(
     var computerLastHit by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     var adjacentTargets by remember { mutableStateOf(listOf<Pair<Int, Int>>()) }
 
+    var db = Firebase.firestore
+    var currentUser = Firebase.auth.currentUser?.uid
+    val userDocRef = db.collection("Users").document(currentUser.toString())
     // Computer places ships at the start
     LaunchedEffect(Unit) {
         // Only place computer ships once at the beginning
@@ -257,7 +265,32 @@ fun SinglePlayerGameScreen(
 
                                 // Check for game over
                                 if (newState.phase == 2) {
+
                                     hitMissMessage = "Game Over! You Win!"
+
+                                    userDocRef.get().addOnSuccessListener { document ->
+                                        if (document.exists()) {
+                                            val currentWins = document.getLong("wins") ?: 0
+                                            userDocRef.update("wins", currentWins + 1)
+                                                .addOnSuccessListener {
+                                                    Log.d("Firestore", "Wins updated successfully")
+                                                }
+                                                .addOnFailureListener { e ->
+                                                    Log.e("Firestore", "Error updating wins", e)
+                                                }
+                                        } else {
+                                            // If user document doesn't exist, create it with wins = 1
+                                            userDocRef.set(mapOf("wins" to 1))
+                                                .addOnSuccessListener {
+                                                    Log.d("Firestore", "User document created with wins = 1")
+                                                }
+                                                .addOnFailureListener { e ->
+                                                    Log.e("Firestore", "Error creating user document", e)
+                                                }
+                                        }
+                                    }.addOnFailureListener { e ->
+                                        Log.e("Firestore", "Error retrieving user document", e)
+                                    }
                                 } else {
                                     // Set up for computer's turn
                                     isComputerTurn = true

@@ -83,9 +83,14 @@ fun SessionScreen(
                 if (currentUserEmail != null) {
                     gameViewModel.createGameSession(
                         player1Id = currentUserId,
-                        onAdd = { sessionId ->
-                            Log.d("SessionsScreen", "Game session created with id: $sessionId")
-                            navController.navigate("game/${sessionId}")
+                        onAdd = { successful, sessionId ->
+                            if (successful && sessionId != null) {
+                                Log.d("SessionsScreen", "Game session created with id: $sessionId")
+                                navController.navigate("game/$sessionId")
+                            } else {
+                                // Handle creation failure
+                                Log.e("SessionsScreen", "Failed to create game session")
+                            }
                         }
                     )
                 }
