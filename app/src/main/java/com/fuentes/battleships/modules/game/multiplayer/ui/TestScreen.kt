@@ -1,4 +1,6 @@
-package com.fuentes.battleships.modules.game.singleplayer.ui
+/*
+package com.fuentes.battleships.modules.game.multiplayer.ui
+
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,56 +45,43 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.fuentes.battleships.modules.auth.ui.AuthViewModel
 import com.fuentes.battleships.modules.game.GameLogic
+import com.fuentes.battleships.modules.game.multiplayer.data.GameSession
 import com.fuentes.battleships.modules.game.singleplayer.data.Cell
 import com.fuentes.battleships.modules.game.singleplayer.data.GameState
 import kotlinx.coroutines.delay
 
 @Composable
-fun GameScreen(
+fun TestScreen(
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel,
     navController: NavController
 ) {
     val gameLogic = GameLogic()
     var gameBoard by remember { mutableStateOf(gameLogic.createInitialBoard()) }
-    var gameState by remember { mutableStateOf(GameState()) }
+    var gameSession by remember { mutableStateOf(GameSession()) }
     var showHitMissDialog by remember { mutableStateOf(false) }
     var hitMissMessage by remember { mutableStateOf("") }
     var showTurnNotification by remember { mutableStateOf(false) }
     var turnMessage by remember { mutableStateOf("") }
-    var timer by remember { mutableStateOf(15) } // 15-second timer
-    var isTimerRunning by remember { mutableStateOf(false) } // Timer state
-
-    // Timer logic
-    LaunchedEffect(isTimerRunning, timer) {
-        if (isTimerRunning && timer > 0) {
-            delay(1000L) // Wait for 1 second
-            timer-- // Decrement timer
-        } else if (timer == 0) {
-            // Timer ran out, switch turns
-            isTimerRunning = false
-            gameState = gameState.copy(isPlayer1Turn = !gameState.isPlayer1Turn)
-            timer = 15 // Reset timer
-            showTurnNotification = true
-            turnMessage = "Time's up! Player ${if (!gameState.isPlayer1Turn) 1 else 2}'s turn"
-        }
-    }
 
     // Modified LaunchedEffect to automatically set attack mode when turn starts
-    LaunchedEffect(gameState.isPlayer1Turn, gameState.phase) {
-        if (gameState.phase == 0 && gameState.player1Ships.size == 2 && !showTurnNotification) {
-            // Show simple turn notification for Player 2
-            showTurnNotification = true
-            turnMessage = "Player 2's turn to place ships"
+    LaunchedEffect(gameSession.isPlayer1Turn, gameSession.phase) {
+        if (gameSession.phase == 0) {
+            val player1ShipsCount = gameSession.player1Ships.size
+            val player2ShipsCount = gameSession.player2Ships.size
 
-            // After showing notification, initialize Player 2's board as empty
-            gameBoard = gameLogic.createInitialBoard()
-        } else if (gameState.phase == 1) {
+            if (player1ShipsCount == 2 && !showTurnNotification) {
+                // Show simple turn notification for Player 2
+                showTurnNotification = true
+                turnMessage = "Player 2's turn to place ships"
+
+                // After showing notification, initialize Player 2's board as empty
+                gameBoard = gameLogic.createInitialBoard()
+            }
+        } else if (gameSession.phase == 1) {
             // Automatically set to attack mode when a player's turn begins
             if (!showTurnNotification && !showHitMissDialog) {
-                gameState = gameState.copy(boardView = 1)
-                gameBoard = gameLogic.createBoardForAttacking(gameState)
-                isTimerRunning = true // Start the timer automatically
+                gameSession = gameSession.copy(boardView = 1)
             }
         }
     }
@@ -106,28 +95,32 @@ fun GameScreen(
         ) {
             // Game header - removed username references
             Text(
-                text = when (gameState.phase) {
+                text = when (gameSession.phase) {
                     0 -> {
-                        "Player ${if (gameState.isPlayer1Turn) 1 else 2} Place Your Ship (${if (gameState.isPlayer1Turn) gameState.player1Ships.size else gameState.player2Ships.size}/2)"
+                        val playerShipsCount = if (gameSession.isPlayer1Turn)
+                            gameSession.player1Ships.size
+                        else
+                            gameSession.player2Ships.size
+                        "Player ${if (gameSession.isPlayer1Turn) 1 else 2} Place Your Ship (${playerShipsCount}/2)"
                     }
                     1 -> {
-                        "Player ${if (gameState.isPlayer1Turn) 1 else 2}'s Attack Turn - Time Left: $timer seconds"
+                        "Player ${if (gameSession.isPlayer1Turn) 1 else 2}'s Attack Turn"
                     }
-                    else -> "Game Over! Player ${if (gameState.isPlayer1Turn) 1 else 2} Wins!"
+                    else -> "Game Over! Player ${if (gameSession.isPlayer1Turn) 1 else 2} Wins!"
                 },
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
             // Ship placement controls
-            if (gameState.phase == 0) {
+            if (gameSession.phase == 0) {
                 Button(
                     onClick = {
-                        gameState = gameState.copy(isHorizontal = !gameState.isHorizontal)
+                        gameSession = gameSession.copy(isHorizontal = !gameSession.isHorizontal)
                     },
                     modifier = Modifier.padding(bottom = 8.dp)
                 ) {
-                    Text(if (gameState.isHorizontal) "Horizontal Placement" else "Vertical Placement")
+                    Text(if (gameSession.isHorizontal) "Horizontal Placement" else "Vertical Placement")
                 }
             }
 
@@ -172,7 +165,7 @@ fun GameScreen(
             }
 
             // Board Title
-            if (gameState.phase == 1) {
+            if (gameSession.phase == 1) {
                 Text(
                     text = "Enemy Waters (Click to Attack!)",
                     style = MaterialTheme.typography.titleMedium,
@@ -183,49 +176,45 @@ fun GameScreen(
             // Game Board
             BattleshipGrid(
                 board = gameBoard,
-                enabled = when (gameState.phase) {
+                enabled = when (gameSession.phase) {
                     0 -> true
                     1 -> true  // Always enabled during battle phase since we're always in attack mode
                     else -> false
                 },
-                onCellClick = { index ->
-                    when (gameState.phase) {
-                        0 -> gameLogic.handlePlacement(index, gameState, gameBoard) { newState, newBoard ->
-                            gameState = newState
+                onCellClick = { x, y ->
+                    when (gameSession.phase) {
+                        0 -> gameLogic.handlePlacementMultiplayer(x, y, gameSession, gameBoard) { newState, newBoard ->
+                            gameSession = newState
                             gameBoard = newBoard
                         }
                         1 -> {
-                            gameLogic.handleAttack(index, gameState, gameBoard) { newState, newBoard, isHit ->
+                            gameLogic.handleAttack(x, y, gameSession, gameBoard) { newState, newBoard, isHit ->
 
                                 // Display hit/miss notification
                                 hitMissMessage = if (isHit) "Hit! You found an enemy ship!" else "Miss! No ship at this location."
                                 showHitMissDialog = true
 
-                                gameState = newState
+                                gameSession = newState
                                 gameBoard = newBoard
 
                                 // Check for game over
                                 if (newState.phase == 2) {
-                                    hitMissMessage = "Game Over! Player ${if (gameState.isPlayer1Turn) 1 else 2} Wins!"
+                                    hitMissMessage = "Game Over! Player ${if (gameSession.isPlayer1Turn) 1 else 2} Wins!"
                                 }
-
-                                // Reset timer after attack
-                                isTimerRunning = false
-                                timer = 15
                             }
                         }
-                        2 -> { /* Do nothing */ }
+                        2 -> { */
+/* Do nothing *//*
+ }
                     }
                 }
             )
 
-            if (gameState.phase == 2) {
+            if (gameSession.phase == 2) {
                 Button(
                     onClick = {
-                        gameState = GameState()
+                        gameSession = gameSession()
                         gameBoard = gameLogic.createInitialBoard()
-                        timer = 15 // Reset timer
-                        isTimerRunning = false
                     },
                     modifier = Modifier.padding(top = 16.dp)
                 ) {
@@ -243,10 +232,9 @@ fun GameScreen(
                 showTurnNotification = false
 
                 // When a notification is dismissed, automatically set to attack mode for battle phase
-                if (gameState.phase == 1) {
-                    gameState = gameState.copy(boardView = 1)
-                    gameBoard = gameLogic.createBoardForAttacking(gameState)
-                    isTimerRunning = true // Start the timer
+                if (gameSession.phase == 2) {
+                    gameSession = gameSession.copy(boardView = 1)
+                    gameBoard = gameLogic.createBoardForAttacking(gameSession)
                 }
             }
         )
@@ -260,10 +248,10 @@ fun GameScreen(
                 showHitMissDialog = false
 
                 // If game is over, don't switch players
-                if (gameState.phase != 2) {
+                if (gameSession.phase != 2) {
                     // Show turn notification after hit/miss message
                     showTurnNotification = true
-                    turnMessage = "Player ${if (!gameState.isPlayer1Turn) 1 else 2}'s turn"
+                    turnMessage = "Player ${if (!gameSession.isPlayer1Turn) 1 else 2}'s turn"
                 }
             }
         )
@@ -429,10 +417,68 @@ fun HitMissDialog(
 }
 
 @Composable
+fun BattleshipCell(
+    cell: Cell,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    val cellColor = when {
+        cell.isHit && cell.isShip -> Color(0xFFD32F2F) // Brighter red for hits
+        cell.isMiss -> Color(0xFF9E9E9E) // Lighter gray for misses
+        cell.isShip -> Color(0xFF1E88E5) // Brighter blue for ships
+        else -> Color(0xFF81D4FA) // Light blue water
+    }
+
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .size(35.dp)
+            .aspectRatio(1f)
+            .border(
+                width = 1.dp,
+                color = Color.Black.copy(alpha = 0.3f),
+                shape = MaterialTheme.shapes.small
+            ),
+        enabled = enabled && !cell.isHit && !cell.isMiss,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = cellColor,
+            disabledContainerColor = cellColor
+        ),
+        shape = MaterialTheme.shapes.small,
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 0.dp,
+            disabledElevation = 0.dp
+        )
+    ) {
+        if (cell.isHit && cell.isShip) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "Hit",
+                tint = Color.White,
+                modifier = Modifier.size(18.dp)
+            )
+        } else if (cell.isMiss) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .background(Color.White, CircleShape)
+            )
+        }
+    }
+}
+
+
+
+
+
+
+
+@Composable
 fun BattleshipGrid(
     board: List<Cell>,
     enabled: Boolean,
-    onCellClick: (Int) -> Unit
+    onCellClick: (Int, Int) -> Unit
 ) {
     // Column headers
     Row(
@@ -492,7 +538,7 @@ fun BattleshipGrid(
                     BattleshipCell(
                         cell = cell,
                         enabled = enabled,
-                        onClick = { onCellClick(cell.index) }
+                        onClick = { onCellClick(cell.x, cell.y) }
                     )
                 }
             }
@@ -500,55 +546,4 @@ fun BattleshipGrid(
     }
 }
 
-@Composable
-fun BattleshipCell(
-    cell: Cell,
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
-    val cellColor = when {
-        cell.isHit && cell.isShip -> Color(0xFFD32F2F) // Brighter red for hits
-        cell.isMiss -> Color(0xFF9E9E9E) // Lighter gray for misses
-        cell.isShip -> Color(0xFF1E88E5) // Brighter blue for ships
-        else -> Color(0xFF81D4FA) // Light blue water
-    }
-
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .size(35.dp)
-            .aspectRatio(1f)
-            .border(
-                width = 1.dp,
-                color = Color.Black.copy(alpha = 0.3f),
-                shape = MaterialTheme.shapes.small
-            ),
-        enabled = enabled && !cell.isHit && !cell.isMiss,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = cellColor,
-            disabledContainerColor = cellColor
-        ),
-        shape = MaterialTheme.shapes.small,
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 2.dp,
-            pressedElevation = 0.dp,
-            disabledElevation = 0.dp
-        )
-    ) {
-        if (cell.isHit && cell.isShip) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Hit",
-                tint = Color.White,
-                modifier = Modifier.size(18.dp)
-            )
-        } else if (cell.isMiss) {
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .background(Color.White, CircleShape)
-            )
-        }
-    }
-}
-
+*/

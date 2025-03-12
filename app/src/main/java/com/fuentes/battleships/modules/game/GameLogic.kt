@@ -10,24 +10,20 @@ import kotlin.random.Random
 
 class GameLogic {
     fun createInitialBoard(): List<Cell> {
-        val board = mutableListOf<Cell>()
-        for (y in 0..9) {
-            for (x in 0..9) {
-                board.add(Cell(x, y))
-            }
-        }
+        val board = List(100) { index -> Cell(index) }
         return board
     }
 
+
     fun createBoardWithShips(
-        ships: List<List<Pair<Int, Int>>>,
-        opponentHits: List<Pair<Int, Int>>,
-        opponentMisses: List<Pair<Int, Int>>
+        ships: List<List<Int>>,
+        opponentHits: List<Int>,
+        opponentMisses: List<Int>
     ): List<Cell> {
         return createInitialBoard().map { cell ->
-            val coordinate = Pair(cell.x, cell.y)
+            val coordinate = cell.index
             val isShip = ships.any { ship ->
-                ship.any { (shipX, shipY) -> shipX == cell.x && shipY == cell.y }
+                ship.any { shipIndex -> shipIndex == cell.index }
             }
             val isHit = isShip && coordinate in opponentHits
             val isMiss = coordinate in opponentMisses
@@ -41,12 +37,15 @@ class GameLogic {
     }
 
     fun createBoardForAttacking(gameState: GameState): List<Cell> {
-        val attackedShips = if (gameState.isPlayer1Turn) gameState.player2Ships else gameState.player1Ships
-        val attackingHits = if (gameState.isPlayer1Turn) gameState.player1Hits else gameState.player2Hits
-        val attackingMisses = if (gameState.isPlayer1Turn) gameState.player1Misses else gameState.player2Misses
+        val attackedShips =
+            if (gameState.isPlayer1Turn) gameState.player2Ships else gameState.player1Ships
+        val attackingHits =
+            if (gameState.isPlayer1Turn) gameState.player1Hits else gameState.player2Hits
+        val attackingMisses =
+            if (gameState.isPlayer1Turn) gameState.player1Misses else gameState.player2Misses
 
         return createInitialBoard().map { cell ->
-            val coordinate = Pair(cell.x, cell.y)
+            val coordinate = cell.index
             val isHit = coordinate in attackingHits
             val isMiss = coordinate in attackingMisses
 
@@ -62,7 +61,7 @@ class GameLogic {
         }
     }
 
-    fun createBoardForAttackingMultiplayer(gameSession: GameSession): List<Cell> {
+    /*fun createBoardForAttackingMultiplayer(gameSession: GameSession): List<Cell> {
         val attackedShips = if (gameSession.isPlayer1Turn) gameSession.player2Ships else gameSession.player1Ships
         val attackingHits = if (gameSession.isPlayer1Turn) gameSession.player1Hits else gameSession.player2Hits
         val attackingMisses = if (gameSession.isPlayer1Turn) gameSession.player1Misses else gameSession.player2Misses
@@ -82,55 +81,55 @@ class GameLogic {
                 isMiss = isMiss
             )
         }
-    }
+    }*/
 
-    fun calculateShipPositions(startX: Int, startY: Int, isHorizontal: Boolean): List<Pair<Int, Int>> {
+    fun calculateShipPositions(startIndex: Int, isHorizontal: Boolean): List<Int> {
         return if (isHorizontal) {
             listOf(
-                Pair(startX, startY),
-                Pair(startX + 1, startY),
-                Pair(startX + 2, startY)
+                startIndex,
+                startIndex + 1,
+                startIndex + 2
             )
         } else {
             listOf(
-                Pair(startX, startY),
-                Pair(startX, startY + 1),
-                Pair(startX, startY + 2)
+                startIndex,
+                startIndex + 10,
+                startIndex + 20
             )
         }
     }
 
     fun handleAttack(
-        x: Int,
-        y: Int,
+        index: Int,
         gameState: GameState,
         board: List<Cell>,
         onUpdate: (GameState, List<Cell>, Boolean) -> Unit
     ) {
-        val attackedShips = if (gameState.isPlayer1Turn) gameState.player2Ships else gameState.player1Ships
-        val attackingHits = if (gameState.isPlayer1Turn) gameState.player1Hits else gameState.player2Hits
-        val attackingMisses = if (gameState.isPlayer1Turn) gameState.player1Misses else gameState.player2Misses
-
-        val coordinate = Pair(x, y)
+        val attackedShips =
+            if (gameState.isPlayer1Turn) gameState.player2Ships else gameState.player1Ships
+        val attackingHits =
+            if (gameState.isPlayer1Turn) gameState.player1Hits else gameState.player2Hits
+        val attackingMisses =
+            if (gameState.isPlayer1Turn) gameState.player1Misses else gameState.player2Misses
 
         // Check if cell was already attacked
-        if (coordinate !in attackingHits && coordinate !in attackingMisses) {
+        if (index !in attackingHits && index !in attackingMisses) {
             // Check if hit by looking through all ships
-            val isHit = attackedShips.any { ship -> coordinate in ship }
+            val isHit = attackedShips.any { ship -> index in ship }
 
             // Update hits or misses list
-            val newAttackingHits = if (isHit) attackingHits + coordinate else attackingHits
-            val newAttackingMisses = if (!isHit) attackingMisses + coordinate else attackingMisses
+            val newAttackingHits = if (isHit) attackingHits + index else attackingHits
+            val newAttackingMisses = if (!isHit) attackingMisses + index else attackingMisses
 
             // Update board and state
             val newBoard = board.map { cell ->
-                if (cell.x == x && cell.y == y) {
+                if (cell.index == index) {
                     cell.copy(
                         isHit = isHit,
                         isMiss = !isHit,
                         // Show ship if it was hit
                         isShip = isHit && attackedShips.any { ship ->
-                            ship.any { (shipX, shipY) -> shipX == cell.x && shipY == cell.y }
+                            ship.any { shipIndex -> shipIndex == cell.index }
                         }
                     )
                 } else cell
@@ -159,10 +158,18 @@ class GameLogic {
         }
     }
 
-    fun handleAttackMultiplayer(x: Int, y: Int, gameSession: GameSession, onUpdate: (GameSession) -> Unit) {
-        val attackedShips = if (gameSession.isPlayer1Turn) gameSession.player2Ships else gameSession.player1Ships
-        val attackingHits = if (gameSession.isPlayer1Turn) gameSession.player1Hits else gameSession.player2Hits
-        val attackingMisses = if (gameSession.isPlayer1Turn) gameSession.player1Misses else gameSession.player2Misses
+    fun handleAttackMultiplayer(
+        x: Int,
+        y: Int,
+        gameSession: GameSession,
+        onUpdate: (GameSession) -> Unit
+    ) {
+        val attackedShips =
+            if (gameSession.isPlayer1Turn) gameSession.player2Ships else gameSession.player1Ships
+        val attackingHits =
+            if (gameSession.isPlayer1Turn) gameSession.player1Hits else gameSession.player2Hits
+        val attackingMisses =
+            if (gameSession.isPlayer1Turn) gameSession.player1Misses else gameSession.player2Misses
 
         val coordinate = Pair(x, y)
 
@@ -193,19 +200,19 @@ class GameLogic {
     }
 
     fun handlePlacement(
-        x: Int,
-        y: Int,
+        index: Int,
         gameState: GameState,
         board: List<Cell>,
         onUpdate: (GameState, List<Cell>) -> Unit
     ) {
-        val currentShips = if (gameState.isPlayer1Turn) gameState.player1Ships else gameState.player2Ships
+        val currentShips =
+            if (gameState.isPlayer1Turn) gameState.player1Ships else gameState.player2Ships
 
         if (currentShips.size < 2) {
-            val shipPositions = calculateShipPositions(x, y, gameState.isHorizontal)
+            val shipPositions = calculateShipPositions(index, gameState.isHorizontal)
 
             // Check if ship would be out of bounds
-            if (shipPositions.all { (posX, posY) -> posX in 0..9 && posY in 0..9 }) {
+            if (checkIfOutOfBounds(index)) {
                 // Check if ship overlaps with existing ships
                 val existingShipPositions = currentShips.flatten()
                 if (shipPositions.none { it in existingShipPositions }) {
@@ -213,7 +220,7 @@ class GameLogic {
 
                     // Update board to show ship
                     val newBoard = board.map { cell ->
-                        if (shipPositions.any { (shipX, shipY) -> shipX == cell.x && shipY == cell.y }) {
+                        if (shipPositions.any { shipIndex -> shipIndex == cell.index }) {
                             cell.copy(isShip = true)
                         } else cell
                     }
@@ -244,7 +251,7 @@ class GameLogic {
         }
     }
 
-    fun handlePlacementMultiplayer(x: Int, y: Int, gameSession: GameSession, onUpdate: (GameSession) -> Unit) {
+    /*fun handlePlacementMultiplayer(x: Int, y: Int, gameSession: GameSession, onUpdate: (GameSession) -> Unit) {
         val currentShips = if (gameSession.isPlayer1Turn) gameSession.player1Ships else gameSession.player2Ships
 
         if (currentShips.size < 2) {
@@ -273,21 +280,20 @@ class GameLogic {
                 }
             }
         }
-    }
+    }*/
 
     //Computer Logic
-    fun placeComputerShips(): List<List<Pair<Int, Int>>> {
-        val newShips = mutableListOf<List<Pair<Int, Int>>>()
+    fun placeComputerShips(): List<List<Int>> {
+        val newShips = mutableListOf<List<Int>>()
 
         while (newShips.size < 2) { // Place 2 ships
             val isHorizontal = Random.nextBoolean()
-            val maxX = if (isHorizontal) 7 else 9 // Leave room for ship length
-            val maxY = if (isHorizontal) 9 else 7
 
-            val startX = Random.nextInt(0, maxX + 1)
-            val startY = Random.nextInt(0, maxY + 1)
+            val x = Random.nextInt(0, 7)
+            val y = Random.nextInt(0, 7)
+            val index = x + y * 10
 
-            val shipPositions = calculateShipPositions(startX, startY, isHorizontal)
+            val shipPositions = calculateShipPositions(index, isHorizontal)
 
             // Check for overlaps with existing ships
             val existingPositions = newShips.flatten()
@@ -300,27 +306,34 @@ class GameLogic {
     }
 
     // Get a list of adjacent coordinates (up, down, left, right)
-    fun getAdjacentCoordinates(coordinate: Pair<Int, Int>): List<Pair<Int, Int>> {
-        val (x, y) = coordinate
+    fun getAdjacentCoordinates(coordinate: Int): List<Int> {
+        val index = coordinate
         return listOf(
-            Pair(x - 1, y), // Left
-            Pair(x + 1, y), // Right
-            Pair(x, y - 1), // Up
-            Pair(x, y + 1)  // Down
+            index - 1, // Left
+            index + 1, // Right
+            index - 10, // Up
+            index + 10  // Down
         )
     }
 
     // Get a random unattacked coordinate for computer targeting
-    fun getRandomUnattackedCoordinate(hits: List<Pair<Int, Int>>, misses: List<Pair<Int, Int>>): Pair<Int, Int> {
+    fun getRandomUnattackedCoordinate(hits: List<Int>, misses: List<Int>): Int {
         val attackedCoordinates = hits + misses
-        var randomCoordinate: Pair<Int, Int>
+        var randomCoordinate: Int
 
         do {
-            val x = Random.nextInt(0, 10)
-            val y = Random.nextInt(0, 10)
-            randomCoordinate = Pair(x, y)
+            val index = Random.nextInt(0, 99)
+            randomCoordinate = index
         } while (randomCoordinate in attackedCoordinates)
 
         return randomCoordinate
+    }
+
+    fun checkIfOutOfBounds(index: Int): Boolean {
+        if (
+            index in 0..7 || index in 10..17 || index in 20..27 || index in 30..37 || index in 40..47 || index in 50..57 || index in 60..67 || index in 70..77) {
+            return true
+        }
+        return false
     }
 }

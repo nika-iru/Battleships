@@ -48,7 +48,6 @@ import com.fuentes.battleships.modules.auth.ui.AuthViewModel
 import com.fuentes.battleships.modules.game.GameLogic
 import com.fuentes.battleships.modules.game.multiplayer.data.GameSession
 import com.fuentes.battleships.modules.game.multiplayer.data.GameViewModel
-import com.fuentes.battleships.modules.game.singleplayer.data.Cell
 import com.fuentes.battleships.modules.game.singleplayer.data.GameState
 import com.fuentes.battleships.modules.game.singleplayer.ui.BattleshipGrid
 import com.google.firebase.Firebase
@@ -63,22 +62,26 @@ fun MultiplayerScreen(
     sessionId: String
 ) {
     val gameViewModel: GameViewModel = viewModel()
-    var gameSession by remember { mutableStateOf(GameSession()) }
+    var gameSession by remember { mutableStateOf(GameSession(sessionId = sessionId)) } // Initialize with sessionId
     val gameLogic = GameLogic()
 
-    // Listen for Firestore updates
+    // Only call initializeGame once when the screen is first loaded
     LaunchedEffect(sessionId) {
-            gameViewModel.initializeGame(sessionId)
+        if (sessionId.isNotEmpty()) {
             Log.d("MultiplayerScreen", "Initializing game with sessionId: $sessionId")
+            gameViewModel.initializeGame(sessionId)
+        }
     }
 
     // Observe changes to the game session
     LaunchedEffect(gameViewModel.gameSession) {
-        gameSession = gameViewModel.gameSession.value
+        if (gameViewModel.gameSession.value.sessionId != null) {
+            gameSession = gameViewModel.gameSession.value
+        }
     }
 
     // Main UI
-    Surface(
+    /*Surface(
         modifier = modifier.fillMaxSize()
     ) {
         Column(
@@ -150,7 +153,7 @@ fun MultiplayerScreen(
                         }
                     }
                 }
-            )
+            )*/
 
             // Reset button (visible during game over)
             if (gameSession.phase == 2) {
@@ -165,6 +168,6 @@ fun MultiplayerScreen(
                 }
             }
         }
-    }
-}
+    /*}
+}*/
 

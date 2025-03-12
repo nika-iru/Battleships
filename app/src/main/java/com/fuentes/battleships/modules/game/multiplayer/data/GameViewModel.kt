@@ -5,7 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.fuentes.battleships.modules.auth.ui.AuthViewModel
 import com.fuentes.battleships.modules.game.GameLogic
+import com.fuentes.battleships.modules.game.singleplayer.data.Cell
+import com.fuentes.battleships.modules.game.singleplayer.data.GameState
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -155,6 +159,7 @@ class GameViewModel : ViewModel() {
         val sessionId = updatedSession.sessionId
         if (sessionId != null) {
             db.collection("sessions").document(sessionId)
+
                 .update(updatedSession.toMap())
                 .addOnSuccessListener {
                     Log.d("GameViewModel", "Game session updated successfully")
@@ -166,8 +171,14 @@ class GameViewModel : ViewModel() {
     }
 
     fun listenForSessionUpdates(sessionId: String) {
+        if (sessionId.isEmpty()) {
+            Log.e("GameViewModel", "Cannot listen for updates: sessionId is empty")
+            return
+        }
+
         sessionListener?.remove()
 
+        Log.d("GameViewModel", "Setting up listener for session: $sessionId")
         sessionListener = db.collection("sessions")
             .document(sessionId)
             .addSnapshotListener { snapshot, error ->
@@ -176,147 +187,70 @@ class GameViewModel : ViewModel() {
                     return@addSnapshotListener
                 }
 
-                snapshot?.let { doc ->
-                    val updatedSession = GameSession(
-                        sessionId = doc.id,
-                        player1Id = doc.getString("player1Id"),
-                        player2Id = doc.getString("player2Id"),
-                        status = doc.getString("status") ?: "waiting",
-                        player1Ships = (doc.get("player1Ships") as? List<List<List<Int>>>)?.map { ship ->
-                            ship.map {
+                if (snapshot != null && snapshot.exists()) {
+
+                    snapshot?.let { doc ->
+                        val updatedSession = GameSession(
+                            sessionId = doc.id,
+                            player1Id = doc.getString("player1Id"),
+                            player2Id = doc.getString("player2Id"),
+                            status = doc.getString("status") ?: "waiting",
+                            player1Ships = (doc.get("player1Ships") as? List<List<List<Int>>>)?.map { ship ->
+                                ship.map {
+                                    Pair(
+                                        it[0],
+                                        it[1]
+                                    )
+                                }
+                            } ?: emptyList(),
+                            player2Ships = (doc.get("player2Ships") as? List<List<List<Int>>>)?.map { ship ->
+                                ship.map {
+                                    Pair(
+                                        it[0],
+                                        it[1]
+                                    )
+                                }
+                            } ?: emptyList(),
+                            player1Hits = (doc.get("player1Hits") as? List<List<Int>>)?.map {
                                 Pair(
                                     it[0],
                                     it[1]
                                 )
-                            }
-                        } ?: emptyList(),
-                        player2Ships = (doc.get("player2Ships") as? List<List<List<Int>>>)?.map { ship ->
-                            ship.map {
+                            } ?: emptyList(),
+                            player2Hits = (doc.get("player2Hits") as? List<List<Int>>)?.map {
                                 Pair(
                                     it[0],
                                     it[1]
                                 )
-                            }
-                        } ?: emptyList(),
-                        player1Hits = (doc.get("player1Hits") as? List<List<Int>>)?.map {
-                            Pair(
-                                it[0],
-                                it[1]
-                            )
-                        } ?: emptyList(),
-                        player2Hits = (doc.get("player2Hits") as? List<List<Int>>)?.map {
-                            Pair(
-                                it[0],
-                                it[1]
-                            )
-                        } ?: emptyList(),
-                        player1Misses = (doc.get("player1Misses") as? List<List<Int>>)?.map {
-                            Pair(
-                                it[0],
-                                it[1]
-                            )
-                        } ?: emptyList(),
-                        player2Misses = (doc.get("player2Misses") as? List<List<Int>>)?.map {
-                            Pair(
-                                it[0],
-                                it[1]
-                            )
-                        } ?: emptyList(),
-                        isPlayer1Turn = doc.getBoolean("isPlayer1Turn") ?: true,
-                        phase = doc.getLong("phase")?.toInt() ?: 0,
-                        timer = doc.getLong("timer")?.toInt() ?: 15,
-                        winnerId = doc.getString("winnerId")
-                    )
-                    _gameSession.value = updatedSession
+                            } ?: emptyList(),
+                            player1Misses = (doc.get("player1Misses") as? List<List<Int>>)?.map {
+                                Pair(
+                                    it[0],
+                                    it[1]
+                                )
+                            } ?: emptyList(),
+                            player2Misses = (doc.get("player2Misses") as? List<List<Int>>)?.map {
+                                Pair(
+                                    it[0],
+                                    it[1]
+                                )
+                            } ?: emptyList(),
+                            isPlayer1Turn = doc.getBoolean("isPlayer1Turn") ?: true,
+                            phase = doc.getLong("phase")?.toInt() ?: 0,
+                            timer = doc.getLong("timer")?.toInt() ?: 15,
+                            winnerId = doc.getString("winnerId")
+                        )
+                        _gameSession.value = updatedSession
+                        Log.d(
+                            "GameViewModel",
+                            "Listening for changes on session: ${gameSession.value.sessionId}"
+                        )
+                        Log.d("GameViewModel", "Game Session Values: ${gameSession.value}")
+                    }
+                } else {
+                    Log.e("GameViewModel", "Session document does not exist: $sessionId")
                 }
             }
-    }
-
-    // Handle ship placement
-    fun handlePlacement(x: Int, y: Int, gameSession: GameSession, onUpdate: (GameSession) -> Unit) {
-        val currentSession = _gameSession.value
-        if (gameSession.sessionId.isNullOrEmpty()) {
-            Log.e("GameViewModel", "Session ID is null. Cannot update Firestore.")
-            return
-        }
-        Log.d("GameViewModel", "Session ID intialized with: ${currentSession.sessionId}")
-        val currentShips = if (gameSession.isPlayer1Turn) gameSession.player1Ships
-            ?: emptyList() else gameSession.player2Ships ?: emptyList()
-
-        if (currentShips.size < 2) {
-            val shipPositions = gameLogic.calculateShipPositions(x, y, gameSession.isHorizontal)
-
-            Log.d("GameViewModel", "Session ID intialized with: ${currentSession.sessionId}")
-            if (shipPositions.all { (posX, posY) -> posX in 0..9 && posY in 0..9 }) {
-                val existingShipPositions = currentShips.flatten()
-                if (shipPositions.none { it in existingShipPositions }) {
-                    val newShips = currentShips + listOf(shipPositions)
-
-                    val updatedSession = if (gameSession.isPlayer1Turn) {
-                        gameSession.copy(player1Ships = newShips)
-                    } else {
-                        gameSession.copy(player2Ships = newShips)
-                    }
-
-                    Log.d("GameViewModel", "Current Session ID intialized before database update with: ${currentSession.sessionId}")
-                    Log.d("GameViewModel", "Game Session ID intialized before database update with: ${currentSession.sessionId}")
-                    if (gameSession.sessionId.isNullOrEmpty()) {
-                        Log.e("GameViewModel", "Session ID is null before database update. Cannot update Firestore.")
-                        return  // Exit early to prevent crash
-                    }
-
-                    db.collection("sessions").document(gameSession.sessionId)
-                        .update(updatedSession.toMap())
-                        .addOnSuccessListener {
-                            onUpdate(updatedSession)
-                        }
-                        .addOnFailureListener { exception ->
-                            Log.e("GameViewModel", "Failed to update game session", exception)
-                        }
-                }
-            }
-        }
-    }
-
-    // Handle attack
-    fun handleAttack(x: Int, y: Int, gameSession: GameSession, onUpdate: (GameSession) -> Unit) {
-        if (gameSession.sessionId.isNullOrEmpty()) {
-            Log.e("GameViewModel", "Session ID is null. Cannot update Firestore.")
-            return
-        }
-        val attackedShips =
-            if (gameSession.isPlayer1Turn) gameSession.player2Ships else gameSession.player1Ships
-        val attackingHits =
-            if (gameSession.isPlayer1Turn) gameSession.player1Hits else gameSession.player2Hits
-        val attackingMisses =
-            if (gameSession.isPlayer1Turn) gameSession.player1Misses else gameSession.player2Misses
-
-        val coordinate = Pair(x, y)
-
-        if (coordinate !in attackingHits && coordinate !in attackingMisses) {
-            val isHit = attackedShips.any { ship -> coordinate in ship }
-
-            val newAttackingHits = if (isHit) attackingHits + coordinate else attackingHits
-            val newAttackingMisses = if (!isHit) attackingMisses + coordinate else attackingMisses
-
-            val updatedSession = gameSession.copy(
-                player1Hits = if (gameSession.isPlayer1Turn) newAttackingHits else gameSession.player1Hits,
-                player2Hits = if (!gameSession.isPlayer1Turn) newAttackingHits else gameSession.player2Hits,
-                player1Misses = if (gameSession.isPlayer1Turn) newAttackingMisses else gameSession.player1Misses,
-                player2Misses = if (!gameSession.isPlayer1Turn) newAttackingMisses else gameSession.player2Misses,
-                isPlayer1Turn = !gameSession.isPlayer1Turn
-            )
-
-            // Update Firestore
-            db.collection("sessions").document(gameSession.sessionId!!)
-                .update(updatedSession.toMap())
-                .addOnSuccessListener {
-                    onUpdate(updatedSession)
-                }
-                .addOnFailureListener { exception ->
-                    Log.e("GameViewModel", "Failed to update game session", exception)
-                }
-        }
     }
 
     // Reset the game session
@@ -333,7 +267,58 @@ class GameViewModel : ViewModel() {
 
     fun initializeGame(sessionId: String) {
         Log.d("GameViewModel", "Initializing game with sessionId: $sessionId")
+        _gameSession.update { it.copy(sessionId = sessionId) } // Add this line to set sessionId immediately
         listenForSessionUpdates(sessionId)
+    }
+
+    fun flattenShipCoordinates(ships: List<List<Pair<Int, Int>>>): List<String> {
+        val flatList = mutableListOf<String>()
+
+        for (ship in ships) {
+            flatList.add("START_SHIP")
+            for (coordinate in ship) {
+                flatList.add("${coordinate.first},${coordinate.second}")
+            }
+            flatList.add("END_SHIP")
+        }
+
+        return flatList
+    }
+
+    /**
+     * Reconstructs the nested ship coordinates from the flattened Firestore representation
+     */
+    fun reconstructShipCoordinatesFromFirestore(flatData: List<String>): List<List<Pair<Int, Int>>> {
+        val ships = mutableListOf<List<Pair<Int, Int>>>()
+        var currentShip = mutableListOf<Pair<Int, Int>>()
+
+        for (item in flatData) {
+            when (item) {
+                "START_SHIP" -> {
+                    // Start a new ship
+                    currentShip = mutableListOf()
+                }
+                "END_SHIP" -> {
+                    // End current ship and add to ships list
+                    ships.add(currentShip)
+                }
+                else -> {
+                    // Parse coordinate string back to Pair<Int, Int>
+                    val parts = item.split(",")
+                    if (parts.size == 2) {
+                        try {
+                            val x = parts[0].toInt()
+                            val y = parts[1].toInt()
+                            currentShip.add(Pair(x, y))
+                        } catch (e: NumberFormatException) {
+                            // Handle parsing error if needed
+                        }
+                    }
+                }
+            }
+        }
+
+        return ships
     }
 }
 
