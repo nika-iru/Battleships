@@ -19,7 +19,6 @@ class GameLogic {
         return board
     }
 
-
     fun createBoardWithShips(
         ships: List<List<Int>>,
         opponentHits: List<Int>,

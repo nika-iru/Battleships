@@ -277,7 +277,7 @@ class GameViewModel : ViewModel() {
         if (currentShips.size < 2) {
             val shipPositions = calculateShipPositions(index, gameSession.isHorizontal)
 
-            if (checkIfOutOfBounds(index)) {
+            if (checkIfOutOfBounds(index, gameSession)) {
                 val existingShipPositions = currentShips.flatten()
                 if (shipPositions.none { it in existingShipPositions }) {
                     val newShips = currentShips + listOf(shipPositions)
@@ -362,8 +362,15 @@ class GameViewModel : ViewModel() {
         }
     }
 
-    fun checkIfOutOfBounds(index: Int): Boolean {
-        return index in 0..7 || index in 10..17 || index in 20..27 || index in 30..37 || index in 40..47 || index in 50..57 || index in 60..67 || index in 70..77
+    fun checkIfOutOfBounds(index: Int, gameSession: GameSession): Boolean {
+        val row = index / 10
+        val col = index % 10
+
+        return if (gameSession.isHorizontal) {
+            col <= 7  // Ensure there's room for 3 cells (col + 0, col + 1, col + 2)
+        } else {
+            row <= 7  // Ensure there's room for 3 cells (row + 0, row + 1, row + 2)
+        }
     }
 }
 

@@ -36,7 +36,6 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     val authState = authViewModel.uiState.collectAsState()
                     val authEmail = authState.value.email
-                    val authUID = authState.value.userId
 
                     val navController = rememberNavController()
 

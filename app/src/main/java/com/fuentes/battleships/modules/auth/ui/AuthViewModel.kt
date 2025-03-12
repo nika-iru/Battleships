@@ -61,10 +61,6 @@ class AuthViewModel : ViewModel() {
         return Firebase.auth.currentUser?.email
     }
 
-    fun getCurrentUserName(): String? {
-        return Firebase.auth.currentUser?.displayName
-    }
-
     fun registerUser(name: String, email: String, password: String) {
         Firebase.auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
