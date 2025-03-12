@@ -1,4 +1,4 @@
-package com.fuentes.battleships.models.auth.ui
+package com.fuentes.battleships.modules.auth.ui
 
 import android.content.Context
 import android.util.Log
@@ -7,10 +7,10 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.auth
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,12 +18,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
 import java.util.UUID
 
 class AuthViewModel : ViewModel() {
-    // Expose screen UI state
+
     private val _uiState = MutableStateFlow(AuthState())
     val uiState: StateFlow<AuthState> = _uiState.asStateFlow()
+
+    val db = Firebase.firestore
 
     init {
         if (Firebase.auth.currentUser != null) {
@@ -31,6 +34,7 @@ class AuthViewModel : ViewModel() {
                 ->
                 currentState.copy(
                     email = Firebase.auth.currentUser?.email,
+                    userId = Firebase.auth.currentUser?.uid
                 )
             }
         }
@@ -43,15 +47,46 @@ class AuthViewModel : ViewModel() {
             ->
             currentState.copy(
                 email = null,
+                userId = null,
             )
         }
     }
 
-    fun registerUser(email: String, password: String) {
+    fun getCurrentUserId(): String? {
+        return Firebase.auth.currentUser?.uid
+    }
+
+    fun getCurrentUserEmail(): String? {
+        return Firebase.auth.currentUser?.email
+    }
+
+    fun getCurrentUserName(): String? {
+        return Firebase.auth.currentUser?.displayName
+    }
+
+    fun registerUser(name: String, email: String, password: String) {
         Firebase.auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     // sign out immediately after registering
+                    val user = User(
+                        id = Firebase.auth.currentUser?.uid.toString(),
+                        name = name,
+                        email = Firebase.auth.currentUser?.email.toString(),
+                        wins = 0
+                    )
+
+                    if (user != null) {
+                        db.collection("Users")
+                            .document(user.id)
+                            .set(user)
+                            .addOnSuccessListener {
+                                Log.e("GameViewModel", "Successfully added new user")
+                            }
+                            .addOnFailureListener { exception ->
+                                Log.e("GameViewModel", "Failed to add new user", exception)
+                            }
+                    }
                     Firebase.auth.signOut()
                 } else {
                     Log.w("FIREBASE_REGISTER", "createUserWithEmail:failure")
@@ -69,8 +104,11 @@ class AuthViewModel : ViewModel() {
                         ->
                         currentState.copy(
                             email = currentUser?.email,
+                            userId = Firebase.auth.currentUser?.uid,
+                            username = currentUser?.displayName
                         )
                     }
+
                 } else {
                     Log.w("FIREBASE_REGISTER", "signInWithEmailAndPassword:failure")
                 }
@@ -124,9 +162,30 @@ class AuthViewModel : ViewModel() {
                                     ->
                                     currentState.copy(
                                         email = currentUser.email,
+                                        userId = Firebase.auth.currentUser?.uid
                                     )
                                 }
                             }
+
+                            val user = User(
+                                id = Firebase.auth.currentUser?.uid.toString(),
+                                name = Firebase.auth.currentUser?.displayName.toString(),
+                                email = Firebase.auth.currentUser?.email.toString(),
+                                wins = 0
+                            )
+
+                            if (user != null) {
+                                db.collection("Users")
+                                    .document(user.id)
+                                    .set(user)
+                                    .addOnSuccessListener {
+                                        Log.e("GameViewModel", "Successfully added new user")
+                                    }
+                                    .addOnFailureListener { exception ->
+                                        Log.e("GameViewModel", "Failed to add new user", exception)
+                                    }
+                            }
+
                         } else {
                             Log.e("FIREBASE_LOGIN", "The login task failed.")
                         }
