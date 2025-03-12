@@ -5,10 +5,15 @@ import com.fuentes.battleships.modules.game.multiplayer.data.GameSession
 import com.fuentes.battleships.modules.game.singleplayer.data.Cell
 import com.fuentes.battleships.modules.game.singleplayer.data.GameState
 import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
 import kotlin.random.Random
 
 class GameLogic {
+    var db = Firebase.firestore
+    var currentUser = Firebase.auth.currentUser?.uid
+    val userDocRef = db.collection("Users").document(currentUser.toString())
+
     fun createInitialBoard(): List<Cell> {
         val board = List(100) { index -> Cell(index) }
         return board
@@ -148,54 +153,39 @@ class GameLogic {
 
             // Check for game over
             newState = if (newAttackingHits.size == totalShipCells) {
+                if (gameState.isPlayer1Turn) {
+                    userDocRef.get().addOnSuccessListener { document ->
+                        if (document.exists()) {
+                            val currentWins = document.getLong("wins") ?: 0
+                            userDocRef.update("wins", currentWins + 1)
+                                .addOnSuccessListener {
+                                    Log.d("Firestore", "Wins updated successfully")
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.e("Firestore", "Error updating wins", e)
+                                }
+                        } else {
+                            // If user document doesn't exist, create it with wins = 1
+                            userDocRef.set(mapOf("wins" to 1))
+                                .addOnSuccessListener {
+                                    Log.d("Firestore", "User document created with wins = 1")
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.e("Firestore", "Error creating user document", e)
+                                }
+                        }
+                    }.addOnFailureListener { e ->
+                        Log.e("Firestore", "Error retrieving user document", e)
+                    }
+                }
                 newState.copy(phase = 2)
             } else {
                 // Switch turns
                 newState.copy(isPlayer1Turn = !newState.isPlayer1Turn, boardView = 0)
+
             }
 
             onUpdate(newState, newBoard, isHit)
-        }
-    }
-
-    fun handleAttackMultiplayer(
-        x: Int,
-        y: Int,
-        gameSession: GameSession,
-        onUpdate: (GameSession) -> Unit
-    ) {
-        val attackedShips =
-            if (gameSession.isPlayer1Turn) gameSession.player2Ships else gameSession.player1Ships
-        val attackingHits =
-            if (gameSession.isPlayer1Turn) gameSession.player1Hits else gameSession.player2Hits
-        val attackingMisses =
-            if (gameSession.isPlayer1Turn) gameSession.player1Misses else gameSession.player2Misses
-
-        val coordinate = Pair(x, y)
-
-        if (coordinate !in attackingHits && coordinate !in attackingMisses) {
-            val isHit = attackedShips.any { ship -> coordinate in ship }
-
-            val newAttackingHits = if (isHit) attackingHits + coordinate else attackingHits
-            val newAttackingMisses = if (!isHit) attackingMisses + coordinate else attackingMisses
-
-            val updatedSession = gameSession.copy(
-                player1Hits = if (gameSession.isPlayer1Turn) newAttackingHits else gameSession.player1Hits,
-                player2Hits = if (!gameSession.isPlayer1Turn) newAttackingHits else gameSession.player2Hits,
-                player1Misses = if (gameSession.isPlayer1Turn) newAttackingMisses else gameSession.player1Misses,
-                player2Misses = if (!gameSession.isPlayer1Turn) newAttackingMisses else gameSession.player2Misses,
-                isPlayer1Turn = !gameSession.isPlayer1Turn
-            )
-
-            // Update Firestore
-            Firebase.firestore.collection("sessions").document(gameSession.sessionId!!)
-                .update(updatedSession.toMap())
-                .addOnSuccessListener {
-                    onUpdate(updatedSession)
-                }
-                .addOnFailureListener { exception ->
-                    Log.e("GameScreen", "Failed to update game session", exception)
-                }
         }
     }
 

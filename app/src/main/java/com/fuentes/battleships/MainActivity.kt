@@ -83,20 +83,10 @@ class MainActivity : ComponentActivity() {
                             MultiplayerScreen(
                                 authViewModel = authViewModel,
                                 navController = navController,
+                                gameViewModel = gameViewModel,
                                 sessionId = sessionId
                             )
                         }
-
-                        /*composable(
-                            route = "game/{sessionId}",
-                            arguments = listOf(navArgument("sessionId") {
-                                type = NavType.StringType
-                            })
-                        ) { backStackEntry ->
-                            // Retrieve the sessionId from the navigation arguments
-                            val sessionId = backStackEntry.arguments?.getString("sessionId") ?: return@composable session
-                            val isCreator = gameSession.player1Id == currentUserId
-                        }*/
                     }
                 }
             }

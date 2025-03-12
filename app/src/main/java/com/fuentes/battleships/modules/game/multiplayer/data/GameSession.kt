@@ -5,18 +5,20 @@ data class GameSession(
     val player1Id: String? = null, // Firebase Auth User ID
     val player2Id: String? = null, // Firebase Auth User ID
     val status: String = "waiting", // waiting, playing, finished
-    val player1Ships: List<List<Pair<Int, Int>>> = emptyList(),
-    val player2Ships: List<List<Pair<Int, Int>>> = emptyList(),
-    val player1Hits: List<Pair<Int, Int>> = emptyList(),
-    val player2Hits: List<Pair<Int, Int>> = emptyList(),
-    val player1Misses: List<Pair<Int, Int>> = emptyList(),
-    val player2Misses: List<Pair<Int, Int>> = emptyList(),
+    val player1Ships: List<List<Int>> = emptyList(),
+    val player2Ships: List<List<Int>> = emptyList(),
+    val player1Hits: List<Int> = emptyList(),
+    val player2Hits: List<Int> = emptyList(),
+    val player1Misses: List<Int> = emptyList(),
+    val player2Misses: List<Int> = emptyList(),
     val isPlayer1Turn: Boolean = true,
     val phase: Int = 0, //0 = Placement, 1 = battle, 2 = game over
     val isHorizontal: Boolean = true,
     val boardView: Int = 0,// 0 = own board, 1 = opponent board
     val timer: Int = 15,
-    val winnerId: String? = null
+    val winnerId: String? = null,
+    val showTurnNotification: Boolean = false,
+    val turnMessage: String = ""
 ) {
     fun toMap(): Map<String, Any?> {
         return mapOf(
@@ -24,8 +26,8 @@ data class GameSession(
             "player1Id" to player1Id,
             "player2Id" to player2Id,
             "status" to status,
-            "player1Ships" to player1Ships,
-            "player2Ships" to player2Ships,
+            "player1Ships" to player1Ships.flatten(),
+            "player2Ships" to player2Ships.flatten(),
             "player1Hits" to player1Hits,
             "player2Hits" to player2Hits,
             "player1Misses" to player1Misses,
@@ -33,11 +35,10 @@ data class GameSession(
             "isPlayer1Turn" to isPlayer1Turn,
             "isHorizontal" to isHorizontal,
             "phase" to phase,
-            "timer" to timer
+            "timer" to timer,
+            "showTurnNotification" to showTurnNotification,
+            "turnMessage" to turnMessage
         )
-        // when reading do this
-        //val player1Hits = (snapshot["player1Hits"] as? List<List<Int>>)?.map { Pair(it[0], it[1]) } ?: emptyList()
-        //val player2Hits = (snapshot["player2Hits"] as? List<List<Int>>)?.map { Pair(it[0], it[1]) } ?: emptyList()
     }
 }
 
