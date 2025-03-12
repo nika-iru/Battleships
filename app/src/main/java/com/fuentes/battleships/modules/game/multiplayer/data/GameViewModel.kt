@@ -218,6 +218,7 @@ class GameViewModel : ViewModel() {
                             player1Misses = (doc.get("player1Misses") as? List<Long>)?.map { it.toInt() } ?: emptyList(),
                             player2Misses = (doc.get("player2Misses") as? List<Long>)?.map { it.toInt() } ?: emptyList(),
                             isPlayer1Turn = doc.getBoolean("isPlayer1Turn") ?: true,
+                            isHorizontal = doc.getBoolean("isHorizontal") ?: true,
                             phase = doc.getLong("phase")?.toInt() ?: 0,
                             timer = doc.getLong("timer")?.toInt() ?: 15,
                             winnerId = doc.getString("winnerId"),

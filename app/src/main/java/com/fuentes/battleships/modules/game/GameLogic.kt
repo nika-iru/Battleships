@@ -200,7 +200,6 @@ class GameLogic {
         if (currentShips.size < 2) {
             val shipPositions = calculateShipPositions(index, gameState.isHorizontal)
 
-            // Check if ship would be out of bounds
             if (checkIfOutOfBounds(index)) {
                 // Check if ship overlaps with existing ships
                 val existingShipPositions = currentShips.flatten()

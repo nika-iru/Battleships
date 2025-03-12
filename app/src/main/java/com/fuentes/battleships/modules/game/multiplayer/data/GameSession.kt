@@ -13,7 +13,7 @@ data class GameSession(
     val player2Misses: List<Int> = emptyList(),
     val isPlayer1Turn: Boolean = true,
     val phase: Int = 0, //0 = Placement, 1 = battle, 2 = game over
-    val isHorizontal: Boolean = true,
+    val isHorizontal: Boolean = false,
     val boardView: Int = 0,// 0 = own board, 1 = opponent board
     val timer: Int = 15,
     val winnerId: String? = null,

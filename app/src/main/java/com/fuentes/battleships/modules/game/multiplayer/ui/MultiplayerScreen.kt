@@ -85,7 +85,8 @@ fun MultiplayerScreen(
             if (gameSession.phase == 0) {
                 Button(
                     onClick = {
-                        gameViewModel.updateGameSession(gameSession.copy(isHorizontal = !gameSession.isHorizontal))
+                        val updatedSession = gameSession.copy(isHorizontal = !gameSession.isHorizontal)
+                        gameViewModel.updateGameSession(updatedSession)
                     },
                     modifier = Modifier.padding(bottom = 8.dp)
                 ) {
